@@ -1,0 +1,50 @@
+[
+  {
+    "id": "6417e321-c74a-4d07-8543-4a259ee7e64d",
+    "faculty_name": "Dr Alice",
+    "source_type": "linkedin_email",
+    "source_url": "https://www.linkedin.com/feed/update/urn:li:activity:12345",
+    "raw_text": "Dr Alice Johnson published a new article\nDr Alice Johnson shared a publication update in AI education.\nSee the post: https://www.linkedin.com/feed/update/urn:li:activity:12345",
+    "ai_summary": "Dr Alice Johnson published a new article Dr Alice Johnson shared a publication update in AI education. See the post: https://www.linkedin.com/feed/update/urn...",
+    "category": "publication",
+    "priority": 5,
+    "detected_at": "2026-03-29T09:30:00Z",
+    "review_status": "pending"
+  },
+  {
+    "id": "385d3eed-f8e4-498b-b823-89a9a89d3f6d",
+    "faculty_name": "Prof Mark",
+    "source_type": "linkedin_email",
+    "source_url": "https://www.linkedin.com/posts/sample-award",
+    "raw_text": "Prof Mark Lee received an award\nMark Lee was recognized with a teaching award.\nDetails at https://www.linkedin.com/posts/sample-award",
+    "ai_summary": "Prof Mark Lee received an award Mark Lee was recognized with a teaching award. Details at https://www.linkedin.com/posts/sample-award",
+    "category": "award",
+    "priority": 5,
+    "detected_at": "2026-03-29T13:45:00Z",
+    "review_status": "pending"
+  },
+  {
+    "id": "4633ca5c-0a08-4e74-8e6f-bd343c0d302e",
+    "faculty_name": "Alice Johnson",
+    "source_type": "linkedin_email",
+    "source_url": "https://www.linkedin.com/feed/update/urn:li:activity:12345",
+    "raw_text": "Dr Alice Johnson published a new article\nDr Alice Johnson shared a publication update in AI education.\nSee the post: https://www.linkedin.com/feed/update/urn:li:activity:12345",
+    "ai_summary": "Dr Alice Johnson published a new article Dr Alice Johnson shared a publication update in AI education. See the post: https://www.linkedin.com/feed/update/urn...",
+    "category": "publication",
+    "priority": 5,
+    "detected_at": "2026-03-29T09:30:00Z",
+    "review_status": "pending"
+  },
+  {
+    "id": "a4e178ff-2bd5-4b95-a37c-fa22390376eb",
+    "faculty_name": "Mark Lee",
+    "source_type": "linkedin_email",
+    "source_url": "https://www.linkedin.com/posts/sample-award",
+    "raw_text": "Prof Mark Lee received an award\nMark Lee was recognized with a teaching award.\nDetails at https://www.linkedin.com/posts/sample-award",
+    "ai_summary": "Prof Mark Lee received an award Mark Lee was recognized with a teaching award. Details at https://www.linkedin.com/posts/sample-award",
+    "category": "award",
+    "priority": 5,
+    "detected_at": "2026-03-29T13:45:00Z",
+    "review_status": "pending"
+  }
+]

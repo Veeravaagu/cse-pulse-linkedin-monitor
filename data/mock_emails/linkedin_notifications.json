@@ -1,0 +1,16 @@
+[
+  {
+    "subject": "Dr Alice Johnson published a new article",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Dr Alice Johnson shared a publication update in AI education.",
+    "body": "See the post: https://www.linkedin.com/feed/update/urn:li:activity:12345",
+    "received_at": "2026-03-29T09:30:00Z"
+  },
+  {
+    "subject": "Prof Mark Lee received an award",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Mark Lee was recognized with a teaching award.",
+    "body": "Details at https://www.linkedin.com/posts/sample-award",
+    "received_at": "2026-03-29T13:45:00Z"
+  }
+]
