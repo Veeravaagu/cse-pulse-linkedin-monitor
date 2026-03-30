@@ -7,7 +7,7 @@
 
 Pipeline:
 
-1. Read Gmail notifications (or local mock emails in development)
+1. Read Gmail notifications through an ingestion adapter (mock JSON now, Gmail API scaffold available)
 2. Parse useful fields:
    - faculty name (when detectable)
    - source link
@@ -43,6 +43,13 @@ Start with mock mode enabled in `.env`:
 
 ```env
 MOCK_MODE=true
+INGESTION_MODE=mock
+```
+
+To test the Gmail scaffold path (no auth yet, returns 0 records safely):
+
+```env
+INGESTION_MODE=gmail
 ```
 
 ### 4) Run the API
@@ -57,7 +64,8 @@ uvicorn app.main:app --reload
 - All activities: `http://127.0.0.1:8000/activities`
 - High priority: `http://127.0.0.1:8000/activities/high-priority`
 - Single item: `http://127.0.0.1:8000/activities/{id}`
-- Ingest mock emails: `POST http://127.0.0.1:8000/ingest/mock`
+- Ingest via configured adapter: `POST http://127.0.0.1:8000/ingest`
+- Force mock ingestion: `POST http://127.0.0.1:8000/ingest/mock`
 
 ## Test
 
@@ -72,6 +80,7 @@ app/
   api/routes.py            # API endpoints
   models/schemas.py        # Pydantic schemas
   services/
+    ingestion/             # Ingestion adapter layer (mock + Gmail scaffold)
     gmail_parser.py        # Parse Gmail-like notification content
     ai_processor.py        # Summary + classification logic (mock/pluggable)
     sheets_client.py       # Google Sheets sync scaffold

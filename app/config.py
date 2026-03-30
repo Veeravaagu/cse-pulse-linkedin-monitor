@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     app_name: str = "CSE Pulse LinkedIn Monitor"
     env: str = "development"
     mock_mode: bool = True
+    # Ingestion adapter mode: "mock" (local JSON) or "gmail" (API scaffold).
+    ingestion_mode: str = "mock"
     log_level: str = "INFO"
 
     data_file: str = "data/activities.json"
@@ -17,6 +19,8 @@ class Settings(BaseSettings):
     google_sheets_id: str = ""
     google_service_account_json: str = ""
     google_sheets_worksheet: str = "Sheet1"
+
+    mock_email_payload_path: str = "data/mock_emails/linkedin_notifications.json"
 
     gmail_query: str = "from:linkedin.com"
     gmail_max_results: int = 25

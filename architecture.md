@@ -31,7 +31,17 @@ Google Sheets sync (optional)
 FastAPI endpoints for dashboard
 ```
 
-## 3) Module responsibilities
+## 3) Ingestion adapter slice (Milestone 2)
+
+- Interface: `GmailIngestionAdapter.fetch_emails() -> list[RawEmail]`
+- Implementations:
+  - `MockGmailIngestionAdapter`: reads local sample payload JSON
+  - `GmailAPIIngestionAdapter`: scaffold only, safe placeholder with TODOs
+- Factory: `build_ingestion_adapter(mode)` chooses implementation from config
+
+This keeps parser/AI/storage independent from where emails come from.
+
+## 4) Module responsibilities
 
 - `app/config.py`
   - Centralized environment settings
@@ -48,7 +58,7 @@ FastAPI endpoints for dashboard
 - `app/models/schemas.py`
   - Request/response and domain schema definitions
 
-## 4) Data model (activity row)
+## 5) Data model (activity row)
 
 - `id`
 - `faculty_name`
@@ -61,14 +71,14 @@ FastAPI endpoints for dashboard
 - `detected_at`
 - `review_status`
 
-## 5) Reliability choices for project
+## 6) Reliability choices for project
 
 - Mock mode enabled by default for fast local development
 - Defensive parsing for missing/dirty email data
 - Local JSON persistence to avoid setup friction
 - Clear interfaces to migrate to SQLite/PostgreSQL later
 
-## 6) Extensibility path
+## 7) Extensibility path
 
 1. Replace mock ingestion with Gmail API poller/webhook
 2. Replace heuristic AI with LLM-backed summarizer/classifier
