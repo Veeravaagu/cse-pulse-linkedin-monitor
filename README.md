@@ -1,8 +1,6 @@
 # CSE Pulse — LinkedIn Monitoring Module (P3)
 
-A beginner-friendly, **safe** LinkedIn activity monitor for CSE Pulse.
-
-> ✅ This project **does not scrape LinkedIn profiles directly**.  
+> This project **does not scrape LinkedIn profiles directly**.  
 > It ingests **LinkedIn-related Gmail notification emails**, extracts signals, runs AI-assisted enrichment, stores structured records, and exposes them through a FastAPI backend.
 
 ## What this module does
@@ -88,7 +86,6 @@ tests/                     # Pytest tests
 ## Why this design
 
 - **Compliant by design**: no direct LinkedIn scraping
-- **Student-friendly**: mock mode, simple abstractions, small modules
 - **Extensible**: storage and AI backends can be swapped later
 - **Operationally safe**: environment variables for secrets and clear boundaries
 
@@ -97,4 +94,3 @@ tests/                     # Pytest tests
 See:
 - `plans.md` for milestones + acceptance criteria
 - `architecture.md` for technical design
-- `documentation.md` for implementation notes + Codex workflow

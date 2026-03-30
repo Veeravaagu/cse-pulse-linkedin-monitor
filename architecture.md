@@ -61,7 +61,7 @@ FastAPI endpoints for dashboard
 - `detected_at`
 - `review_status`
 
-## 5) Reliability choices for student project
+## 5) Reliability choices for project
 
 - Mock mode enabled by default for fast local development
 - Defensive parsing for missing/dirty email data
