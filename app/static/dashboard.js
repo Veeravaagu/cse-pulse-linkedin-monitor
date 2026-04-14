@@ -130,17 +130,20 @@ function updatePaginatedActivities() {
 }
 
 function createActivityCard(activity) {
+  const facultyName = safeText(activity.faculty_name) || "Unknown faculty";
+  const summary = safeText(activity.ai_summary);
+
   return `
     <article class="inbox-item" data-activity-id="${activity.id}">
       <div class="inbox-item-header">
-        <h3 class="item-title">${safeText(activity.faculty_name) || "Unknown faculty"}</h3>
+        <h3 class="item-title" title="${facultyName}">${facultyName}</h3>
       </div>
       <div class="item-badges">
         ${createBadge(activity.category)}
         ${createBadge(`Priority ${activity.priority}`, priorityClass(activity.priority))}
         ${createReviewBadge(activity)}
       </div>
-      <p class="item-summary">${safeText(activity.ai_summary)}</p>
+      <p class="item-summary" title="${summary}">${summary}</p>
       <div class="meta-line">Detected ${activity.detected_at.slice(0, 10)} • Source ${activity.source_type}</div>
       <div class="review-actions">
         <button class="review-button review-approve" type="button" data-review-action="approved" data-activity-id="${activity.id}">Approve</button>

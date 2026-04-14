@@ -306,6 +306,7 @@ select {
 
 .inbox-item {
   cursor: pointer;
+  padding: 13px 14px;
 }
 
 .inbox-item-header,
@@ -325,18 +326,42 @@ select {
   margin: 0;
 }
 
+.item-title {
+  font-size: 1rem;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .item-badges {
-  margin: 8px 0;
+  margin: 6px 0;
 }
 
 .review-actions {
-  margin-top: 12px;
+  margin-top: 10px;
+  gap: 6px;
 }
 
 .item-summary,
 .spotlight-summary {
-  margin: 10px 0;
+  margin: 8px 0;
   line-height: 1.45;
+}
+
+.item-summary {
+  font-size: 0.94rem;
+  line-height: 1.38;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.inbox-item .meta-line {
+  font-size: 0.88rem;
+  line-height: 1.3;
 }
 
 .pill {
@@ -371,9 +396,9 @@ select {
 }
 
 .review-button {
-  padding: 8px 12px;
-  min-height: 36px;
-  font-size: 0.86rem;
+  padding: 7px 10px;
+  min-height: 32px;
+  font-size: 0.82rem;
 }
 
 .review-approve {
