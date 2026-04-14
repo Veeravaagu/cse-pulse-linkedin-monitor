@@ -3,4 +3,5 @@ __pycache__/
 .venv/
 .env
 .pytest_cache/
-documentation.mdservice-account.json
+documentation.md
+service-account.json
