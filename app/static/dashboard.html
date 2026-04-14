@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CSE Pulse Operations Dashboard</title>
+    <link rel="stylesheet" href="/static/dashboard.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div class="topbar-copy">
+          <p class="eyebrow">Faculty Activity Operations</p>
+          <h1>CSE Pulse Operations Dashboard</h1>
+          <p class="topbar-summary">
+            Review recent faculty activity, focus on high-priority items, and prepare digest-ready updates from the
+            current backend APIs.
+          </p>
+        </div>
+        <div class="topbar-actions">
+          <button id="ingest-button" class="button button-primary" type="button">Run Mock Ingestion</button>
+          <button id="digest-refresh-button" class="button button-secondary" type="button">Refresh Digest</button>
+          <a
+            id="export-markdown-button"
+            class="button button-inline"
+            href="/digest/export/markdown?include_section_totals=true&summary_max_length=140"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Export Markdown
+          </a>
+        </div>
+      </header>
+
+      <section class="status-strip">
+        <p id="status-message" class="status-message status-neutral">Ready for demo.</p>
+        <div id="sheets-status-card" class="sync-card">
+          <strong id="sync-state">Mock-safe mode</strong>
+          <span id="sync-message">Waiting for local review actions.</span>
+          <span class="sync-metrics">
+            <b id="sync-reviewed-count">0</b> reviewed locally • <b id="sync-approved-count">0</b> approved locally
+          </span>
+        </div>
+      </section>
+
+      <section class="kpi-grid" aria-label="Key metrics">
+        <article class="kpi-card">
+          <span class="kpi-label">Total Activities</span>
+          <strong id="kpi-total" class="kpi-value">--</strong>
+        </article>
+        <article class="kpi-card">
+          <span class="kpi-label">Pending Review</span>
+          <strong id="kpi-pending" class="kpi-value">--</strong>
+        </article>
+        <article class="kpi-card">
+          <span class="kpi-label">High Priority</span>
+          <strong id="kpi-priority" class="kpi-value">--</strong>
+        </article>
+        <article class="kpi-card">
+          <span class="kpi-label">Digest Items</span>
+          <strong id="kpi-digest" class="kpi-value">--</strong>
+        </article>
+      </section>
+
+      <main class="content-grid">
+        <section id="inbox" class="panel panel-primary">
+          <div class="panel-header">
+            <div>
+              <p class="section-tag">Activity Inbox</p>
+              <h2>Recent activity queue</h2>
+            </div>
+            <p id="inbox-feedback" class="inline-feedback inline-feedback-hidden"></p>
+          </div>
+
+          <div class="filter-toolbar" aria-label="Inbox filters">
+            <label class="field field-search">
+              <span>Search</span>
+              <input id="search-filter" type="search" placeholder="Faculty, summary, category" />
+            </label>
+            <label class="field">
+              <span>Category</span>
+              <select id="category-filter">
+                <option value="">All categories</option>
+                <option value="publication">Publication</option>
+                <option value="grant">Grant</option>
+                <option value="talk">Talk</option>
+                <option value="award">Award</option>
+                <option value="event">Event</option>
+                <option value="student achievement">Student achievement</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Review status</span>
+              <select id="review-status-filter">
+                <option value="">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="reviewed">Reviewed</option>
+              </select>
+            </label>
+            <button id="clear-filters-button" class="button button-inline" type="button">Clear</button>
+          </div>
+
+          <div id="activity-inbox" class="inbox-list empty-state">Loading activities...</div>
+
+          <div class="pagination-bar">
+            <div id="pagination-summary" class="pagination-summary">Showing 0-0 of 0</div>
+            <div class="pagination-controls">
+              <label class="page-size-control">
+                <span>Rows</span>
+                <select id="page-size-selector">
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                </select>
+              </label>
+              <button id="pagination-prev" class="button button-inline pagination-button" type="button">Previous</button>
+              <div id="pagination-pages" class="pagination-pages" aria-label="Pages"></div>
+              <button id="pagination-next" class="button button-inline pagination-button" type="button">Next</button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="side-column">
+          <section class="panel panel-secondary">
+            <div class="panel-header">
+              <div>
+                <p class="section-tag">Priority Spotlight</p>
+                <h2>Needs attention</h2>
+              </div>
+            </div>
+            <div id="spotlight-panel" class="spotlight-list empty-state">Loading spotlight...</div>
+          </section>
+
+          <section id="workspace" class="panel panel-secondary">
+            <div class="panel-header">
+              <div>
+                <p class="section-tag">Digest Workspace</p>
+                <h2>Review outputs</h2>
+              </div>
+              <p id="digest-feedback" class="inline-feedback inline-feedback-hidden"></p>
+            </div>
+
+            <div class="digest-tabs" role="tablist" aria-label="Digest views">
+              <button class="tab-button is-active" type="button" data-digest-tab="preview">Preview</button>
+              <button class="tab-button" type="button" data-digest-tab="json">JSON</button>
+              <button class="tab-button" type="button" data-digest-tab="markdown">Markdown</button>
+            </div>
+
+            <div class="digest-pane is-active" data-digest-panel="preview">
+              <pre id="digest-preview-content" class="digest-code empty-state">Loading digest preview...</pre>
+            </div>
+            <div class="digest-pane" data-digest-panel="json">
+              <pre id="digest-json-content" class="digest-code empty-state">Loading digest JSON...</pre>
+            </div>
+            <div class="digest-pane" data-digest-panel="markdown">
+              <pre id="digest-markdown-content" class="digest-code empty-state">Loading digest markdown...</pre>
+            </div>
+
+            <div id="digest-summary-cards" class="digest-summary-cards empty-state">Loading summary...</div>
+          </section>
+        </aside>
+      </main>
+
+      <section id="insights" class="panel panel-insights">
+        <div class="panel-header">
+          <div>
+            <p class="section-tag">Insights</p>
+            <h2>Quick trends</h2>
+          </div>
+        </div>
+        <div class="insight-grid">
+          <div id="charts-grid" class="charts-grid empty-state">Loading charts...</div>
+          <div id="timeline-chart" class="timeline-chart empty-state">Loading trend chart...</div>
+        </div>
+      </section>
+    </div>
+
+    <div id="detail-modal" class="modal-shell modal-hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-modal="true"></div>
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title">
+        <button id="modal-close-button" class="modal-close" type="button" aria-label="Close details">×</button>
+        <div id="detail-modal-content"></div>
+      </section>
+    </div>
+
+    <script src="/static/dashboard.js" defer></script>
+  </body>
+</html>

@@ -13,11 +13,15 @@ class Settings(BaseSettings):
 
     data_file: str = "data/activities.json"
 
+    # Enrichment mode: "mock" keeps rule-based logic, "llm" is a future scaffold.
     ai_provider: str = "mock"
     ai_model: str = "gpt-4o-mini"
 
+    google_sheets_enabled: bool = False
     google_sheets_id: str = ""
+    # Backward-compatible legacy field. If present, we treat it as a file path.
     google_service_account_json: str = ""
+    google_service_account_path: str = ""
     google_sheets_worksheet: str = "Sheet1"
 
     mock_email_payload_path: str = "data/mock_emails/linkedin_notifications.json"

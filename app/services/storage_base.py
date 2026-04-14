@@ -1,0 +1,37 @@
+from typing import Protocol
+
+from app.models.schemas import ActivityCategory, ActivityRecord, EnrichedActivity, ParsedEmailActivity, ReviewStatus
+
+
+class ActivityStorage(Protocol):
+    """Common interface for storage backends.
+
+    Beginner note:
+    - The API and ingestion flow should depend on this contract, not on a
+      specific JSON implementation.
+    - That makes it easier to add SQLite later without rewriting route logic.
+    """
+
+    def list_all(self) -> list[ActivityRecord]:
+        """Return every stored activity."""
+
+    def list_activities(
+        self,
+        *,
+        category: ActivityCategory | None = None,
+        review_status: ReviewStatus | None = None,
+        sort_by: str = "detected_at",
+        sort_order: str = "desc",
+        offset: int = 0,
+        limit: int | None = None,
+    ) -> list[ActivityRecord]:
+        """Return activities with optional filtering, sorting, and pagination."""
+
+    def get_by_id(self, record_id: str) -> ActivityRecord | None:
+        """Return a single activity, or None if missing."""
+
+    def list_high_priority(self, threshold: int = 4) -> list[ActivityRecord]:
+        """Return activities whose priority is at or above the threshold."""
+
+    def create(self, parsed: ParsedEmailActivity, enriched: EnrichedActivity) -> ActivityRecord:
+        """Persist one parsed + enriched activity and return the saved row."""

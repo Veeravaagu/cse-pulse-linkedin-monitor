@@ -1,16 +1,170 @@
 [
   {
-    "subject": "Dr Alice Johnson published a new article",
+    "subject": "Prof Maya Patel published a new paper on trustworthy ML systems",
     "sender": "notifications-noreply@linkedin.com",
-    "snippet": "Dr Alice Johnson shared a publication update in AI education.",
-    "body": "See the post: https://www.linkedin.com/feed/update/urn:li:activity:12345",
-    "received_at": "2026-03-29T09:30:00Z"
+    "snippet": "Journal publication accepted with collaborators from industry and healthcare.",
+    "body": "See the publication update: https://www.linkedin.com/feed/update/urn:li:activity:70001",
+    "received_at": "2026-04-02T09:15:00Z"
   },
   {
-    "subject": "Prof Mark Lee received an award",
+    "subject": "Dr Omar Hassan received major grant funding for edge AI security",
     "sender": "notifications-noreply@linkedin.com",
-    "snippet": "Mark Lee was recognized with a teaching award.",
-    "body": "Details at https://www.linkedin.com/posts/sample-award",
-    "received_at": "2026-03-29T13:45:00Z"
+    "snippet": "New grant will support multi-year systems and security research.",
+    "body": "Details at https://www.linkedin.com/feed/update/urn:li:activity:70002",
+    "received_at": "2026-04-03T11:40:00Z"
+  },
+  {
+    "subject": "Prof Elena Rodriguez delivered a keynote talk at the Midwest Data Systems Symposium",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Keynote talk focused on reliable distributed infrastructure for public-interest applications.",
+    "body": "Watch the talk highlights: https://www.linkedin.com/feed/update/urn:li:activity:70003",
+    "received_at": "2026-04-04T14:05:00Z"
+  },
+  {
+    "subject": "Dr Priya Narayanan received an award for undergraduate teaching innovation",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Teaching award recognizes project-based systems instruction and mentoring.",
+    "body": "Recognition post: https://www.linkedin.com/feed/update/urn:li:activity:70004",
+    "received_at": "2026-04-05T10:20:00Z"
+  },
+  {
+    "subject": "Prof Daniel Cho organized a workshop event on secure software supply chains",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Workshop event will bring together faculty, alumni, and industry engineers.",
+    "body": "Event details: https://www.linkedin.com/feed/update/urn:li:activity:70005",
+    "received_at": "2026-04-05T16:45:00Z"
+  },
+  {
+    "subject": "Prof Aisha Thompson highlighted student achievement in ACM regional programming",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Mentored student team advanced with a top-five finish and strong systems design work.",
+    "body": "Student achievement post: https://www.linkedin.com/feed/update/urn:li:activity:70006",
+    "received_at": "2026-04-06T08:55:00Z"
+  },
+  {
+    "subject": "Dr Victor Kim shared a department update on community computing outreach",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Update covers civic partnerships and summer engagement plans.",
+    "body": "Read more: https://www.linkedin.com/feed/update/urn:li:activity:70007",
+    "received_at": "2026-04-06T13:10:00Z"
+  },
+  {
+    "subject": "Prof Lydia Chen published a journal article on low-power computer vision",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Publication explores efficient models for mobile sensing and embedded devices.",
+    "body": "Publication details: https://www.linkedin.com/feed/update/urn:li:activity:70008",
+    "received_at": "2026-04-07T09:05:00Z"
+  },
+  {
+    "subject": "Dr Samuel Brooks received grant support for accessible HCI tooling",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Grant funding expands collaboration with campus accessibility partners.",
+    "body": "Funding announcement: https://www.linkedin.com/feed/update/urn:li:activity:70009",
+    "received_at": "2026-04-07T15:30:00Z"
+  },
+  {
+    "subject": "Prof Hannah Wu gave an invited seminar talk on formal methods for robotics",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Seminar talk covered verification pipelines and deployment case studies.",
+    "body": "Seminar update: https://www.linkedin.com/feed/update/urn:li:activity:70010",
+    "received_at": "2026-04-08T12:25:00Z"
+  },
+  {
+    "subject": "Dr Miguel Alvarez was named winner of a translational research award",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Award recognizes collaborative work in medical imaging systems.",
+    "body": "Award post: https://www.linkedin.com/feed/update/urn:li:activity:70011",
+    "received_at": "2026-04-08T17:10:00Z"
+  },
+  {
+    "subject": "Prof Nina Kapoor launched a conference event for AI in public service",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Conference event agenda includes public-sector deployment and evaluation sessions.",
+    "body": "Conference page: https://www.linkedin.com/feed/update/urn:li:activity:70012",
+    "received_at": "2026-04-09T08:40:00Z"
+  },
+  {
+    "subject": "Dr Aaron Bell celebrated student achievement in NSF graduate fellowship results",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Mentored student cohort earned multiple fellowship offers this cycle.",
+    "body": "Student success post: https://www.linkedin.com/feed/update/urn:li:activity:70013",
+    "received_at": "2026-04-09T14:50:00Z"
+  },
+  {
+    "subject": "Prof Sophia Green published a paper on privacy-preserving analytics",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Paper introduces scalable techniques for secure cohort analysis.",
+    "body": "Paper link: https://www.linkedin.com/feed/update/urn:li:activity:70014",
+    "received_at": "2026-04-10T10:05:00Z"
+  },
+  {
+    "subject": "Dr Jason Reed received grant funding for resilient cloud infrastructure education",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Funding supports curriculum, testbeds, and open lab materials.",
+    "body": "Grant details: https://www.linkedin.com/feed/update/urn:li:activity:70015",
+    "received_at": "2026-04-10T16:15:00Z"
+  },
+  {
+    "subject": "Prof Leila Farouk gave a distinguished lecture talk on responsible data governance",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Talk highlighted governance models for applied machine learning teams.",
+    "body": "Lecture update: https://www.linkedin.com/feed/update/urn:li:activity:70016",
+    "received_at": "2026-04-11T09:50:00Z"
+  },
+  {
+    "subject": "Dr Kevin Morales received a college award for faculty mentorship",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Honor recognizes graduate advising and cross-lab mentorship.",
+    "body": "Mentorship award: https://www.linkedin.com/feed/update/urn:li:activity:70017",
+    "received_at": "2026-04-11T13:35:00Z"
+  },
+  {
+    "subject": "Prof Grace Liu hosted a workshop event on data-intensive systems",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Workshop event connected doctoral students with alumni in infrastructure engineering.",
+    "body": "Workshop recap: https://www.linkedin.com/feed/update/urn:li:activity:70018",
+    "received_at": "2026-04-12T11:25:00Z"
+  },
+  {
+    "subject": "Dr Emily Foster shared student achievement from a cybersecurity capstone showcase",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Mentored teams delivered strong prototypes and community-facing demos.",
+    "body": "Showcase highlights: https://www.linkedin.com/feed/update/urn:li:activity:70019",
+    "received_at": "2026-04-12T18:20:00Z"
+  },
+  {
+    "subject": "Prof Raj Mehta shared an alumni panel update for the software engineering community",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Update summarizes panel themes around platform engineering and developer productivity.",
+    "body": "Community update: https://www.linkedin.com/feed/update/urn:li:activity:70020",
+    "received_at": "2026-04-13T08:30:00Z"
+  },
+  {
+    "subject": "Dr Irene Novak published a journal publication on scientific computing reproducibility",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Publication describes reproducible workflows for large-scale simulation teams.",
+    "body": "Publication post: https://www.linkedin.com/feed/update/urn:li:activity:70021",
+    "received_at": "2026-04-13T15:05:00Z"
+  },
+  {
+    "subject": "Prof Thomas Okafor received grant backing for robotics and agriculture systems",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Grant brings together sensing, autonomy, and field deployment partners.",
+    "body": "Funding post: https://www.linkedin.com/feed/update/urn:li:activity:70022",
+    "received_at": "2026-04-14T09:00:00Z"
+  },
+  {
+    "subject": "Dr Julia Bennett delivered a plenary keynote talk on scalable data platforms",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Keynote talk focused on operational reliability and developer experience.",
+    "body": "Keynote recap: https://www.linkedin.com/feed/update/urn:li:activity:70023",
+    "received_at": "2026-04-14T12:45:00Z"
+  },
+  {
+    "subject": "Prof Marcus Silva organized a campus event on computing for climate resilience",
+    "sender": "notifications-noreply@linkedin.com",
+    "snippet": "Event connected CS faculty with environmental science and public policy groups.",
+    "body": "Event details: https://www.linkedin.com/feed/update/urn:li:activity:70024",
+    "received_at": "2026-04-15T10:10:00Z"
   }
 ]
