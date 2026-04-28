@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CSE Activity Monitoring Dashboard</title>
-    <link rel="stylesheet" href="/static/dashboard.css?v=digest-date-controls" />
+    <link rel="stylesheet" href="/static/dashboard.css?v=batch-review-delete" />
   </head>
   <body>
     <div class="page-shell">
@@ -72,6 +72,11 @@
             <button class="tab-button" type="button" data-status-tab="approved">Approved</button>
             <button class="tab-button" type="button" data-status-tab="rejected">Rejected</button>
             <button class="tab-button" type="button" data-status-tab="">All</button>
+          </div>
+
+          <div id="batch-toolbar" class="batch-toolbar" aria-label="Batch activity actions" hidden>
+            <span id="selection-summary" class="selection-summary">0 selected</span>
+            <div id="batch-actions" class="batch-actions"></div>
           </div>
 
           <div id="activity-inbox" class="inbox-list empty-state">Loading activities...</div>
@@ -159,6 +164,21 @@
       </section>
     </div>
 
+    <div id="delete-confirm-modal" class="modal-shell modal-hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-delete-modal="true"></div>
+      <section class="modal-card confirm-card" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+        <p class="section-tag">Confirm Delete</p>
+        <h3 id="delete-confirm-title">Permanent delete</h3>
+        <p id="delete-confirm-message" class="confirm-message">
+          You are about to permanently delete this activity. This action is irreversible. Do you want to continue?
+        </p>
+        <div class="confirm-actions">
+          <button id="delete-cancel-button" class="button button-inline" type="button">Cancel</button>
+          <button id="delete-confirm-button" class="button button-danger" type="button">Delete</button>
+        </div>
+      </section>
+    </div>
+
     <div id="detail-modal" class="modal-shell modal-hidden" aria-hidden="true">
       <div class="modal-backdrop" data-close-modal="true"></div>
       <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title">
@@ -167,6 +187,6 @@
       </section>
     </div>
 
-    <script src="/static/dashboard.js?v=digest-date-controls" defer></script>
+    <script src="/static/dashboard.js?v=batch-review-delete" defer></script>
   </body>
 </html>

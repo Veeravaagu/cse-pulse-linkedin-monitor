@@ -165,6 +165,10 @@ select {
   transition: transform 160ms ease, opacity 160ms ease, background 160ms ease;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .button:hover,
 .tab-button:hover,
 .page-number:hover,
@@ -181,6 +185,11 @@ select {
 .button-secondary {
   color: var(--accent-strong);
   background: rgba(0, 91, 187, 0.08);
+}
+
+.button-danger {
+  color: #fff;
+  background: #a44428;
 }
 
 .button-inline {
@@ -331,6 +340,32 @@ select {
   padding-bottom: var(--space-xs);
 }
 
+.batch-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+  margin-bottom: var(--space-md);
+  padding: var(--space-xs);
+  border-radius: 1rem;
+  background: var(--surface-soft);
+  border: 0.0625rem solid var(--line);
+}
+
+.batch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+.selection-summary {
+  color: var(--muted);
+  font-size: clamp(0.74rem, 0.7rem + 0.16vw, 0.84rem);
+  font-weight: 700;
+  margin-right: auto;
+}
+
 .inbox-list,
 .spotlight-list,
 .charts-grid,
@@ -373,6 +408,15 @@ select {
   padding: var(--space-sm);
 }
 
+.inbox-item.is-selected {
+  border-color: rgba(0, 91, 187, 0.34);
+  background: rgba(0, 91, 187, 0.045);
+}
+
+.inbox-item.is-selected .review-actions {
+  display: none;
+}
+
 .inbox-item-header,
 .spotlight-header,
 .item-badges,
@@ -383,6 +427,23 @@ select {
   align-items: center;
   min-width: 0;
   max-width: 100%;
+}
+
+.activity-select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.activity-select input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--accent);
 }
 
 .item-title,
@@ -489,6 +550,11 @@ select {
 .review-reject {
   background: rgba(164, 68, 40, 0.12);
   color: var(--alert);
+}
+
+.review-delete {
+  background: rgba(164, 68, 40, 0.14);
+  color: #8f341d;
 }
 
 .review-mark {
@@ -727,6 +793,28 @@ select {
   margin: var(--space-xs) 0 0;
 }
 
+.confirm-card {
+  width: min(28rem, calc(100% - var(--space-lg)));
+}
+
+.confirm-card h3 {
+  margin: 0;
+  font-size: clamp(1.25rem, 1rem + 0.8vw, 1.6rem);
+}
+
+.confirm-message {
+  margin: var(--space-sm) 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
 @media (max-width: 72rem) {
   .topbar {
     grid-template-columns: 1fr;
@@ -765,7 +853,8 @@ select {
   }
 
   .status-tabs,
-  .digest-tabs {
+  .digest-tabs,
+  .batch-toolbar {
     flex-wrap: nowrap;
     overflow-x: auto;
     padding-bottom: var(--space-xs);
@@ -773,7 +862,9 @@ select {
   }
 
   .status-tabs .tab-button,
-  .digest-tabs .tab-button {
+  .digest-tabs .tab-button,
+  .batch-toolbar .review-button,
+  .batch-actions {
     flex: 0 0 auto;
   }
 

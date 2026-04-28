@@ -180,6 +180,9 @@ def test_dashboard_page_loads() -> None:
     assert 'data-status-tab="pending"' in response.text
     assert 'data-status-tab="approved"' in response.text
     assert 'data-status-tab="rejected"' in response.text
+    assert "Delete permanently" not in response.text
+    assert "Delete all rejected currently visible" not in response.text
+    assert "You are about to permanently delete this activity." in response.text
     assert "Mark reviewed" not in response.text
 
 
@@ -189,6 +192,28 @@ def test_dashboard_ingestion_button_uses_real_ingest_endpoint() -> None:
     assert 'fetchPayload("/ingest", { method: "POST" })' in dashboard_js
     assert "/ingest/mock" not in dashboard_js
     assert "/demo" not in dashboard_js
+
+
+def test_dashboard_uses_review_and_delete_admin_endpoints() -> None:
+    dashboard_js = Path("app/static/dashboard.js").read_text(encoding="utf-8")
+
+    assert 'fetchPayload("/activities/batch", {' in dashboard_js
+    assert 'method: "PATCH"' in dashboard_js
+    assert 'method: "DELETE"' in dashboard_js
+    assert 'body: JSON.stringify({ ids, review_status: nextState })' in dashboard_js
+    assert 'body: JSON.stringify({ ids })' in dashboard_js
+    assert 'data-delete-activity-id="${activity.id}"' in dashboard_js
+    assert ">Approve</button>" in dashboard_js
+    assert ">Reject</button>" in dashboard_js
+    assert "Move to rejected" in dashboard_js
+    assert ">Restore</button>" in dashboard_js
+    assert "Delete permanently" in dashboard_js
+    assert "Delete all rejected currently visible" in dashboard_js
+    assert 'state.filters.reviewStatus === "pending"' in dashboard_js
+    assert 'state.filters.reviewStatus === "approved"' in dashboard_js
+    assert 'state.filters.reviewStatus === "rejected"' in dashboard_js
+    assert "clearSelection();" in dashboard_js
+    assert "data-delete-visible-rejected" in dashboard_js
 
 
 def test_ingest_endpoint_uses_gmail_ingestion_mode(monkeypatch) -> None:

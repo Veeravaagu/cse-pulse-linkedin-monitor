@@ -21,6 +21,8 @@ const state = {
     startDate: "",
     endDate: "",
   },
+  selectedActivityIds: new Set(),
+  pendingDeleteIds: [],
 };
 
 async function fetchPayload(url, options = {}) {
@@ -145,22 +147,127 @@ function updatePaginatedActivities() {
   state.paginatedActivities = state.filteredActivities;
 }
 
+function getSelectedActivities() {
+  return state.activities.filter((activity) => state.selectedActivityIds.has(activity.id));
+}
+
+function getVisibleRejectedActivities() {
+  return state.filteredActivities.filter((activity) => activity.review_status === "rejected");
+}
+
+function isActionableTab() {
+  return ["pending", "approved", "rejected"].includes(state.filters.reviewStatus);
+}
+
+function clearSelection() {
+  state.selectedActivityIds.clear();
+}
+
+function pruneSelection() {
+  const loadedIds = new Set(state.activities.map((activity) => activity.id));
+  state.selectedActivityIds.forEach((activityId) => {
+    if (!loadedIds.has(activityId)) {
+      state.selectedActivityIds.delete(activityId);
+    }
+  });
+}
+
+function updateBatchActions() {
+  const toolbar = document.getElementById("batch-toolbar");
+  const actions = document.getElementById("batch-actions");
+  const selectedActivities = getSelectedActivities();
+  const selectedRejectedCount = selectedActivities.filter((activity) => activity.review_status === "rejected").length;
+  const visibleRejectedCount = getVisibleRejectedActivities().length;
+  const selectedCount = selectedActivities.length;
+  const status = state.filters.reviewStatus;
+
+  actions.innerHTML = "";
+  if (status === "pending") {
+    toolbar.hidden = selectedCount === 0;
+    if (selectedCount > 0) {
+      actions.insertAdjacentHTML(
+        "beforeend",
+        `
+          <button id="batch-approve-button" class="review-button review-approve" type="button" data-batch-review-action="approved">Approve</button>
+          <button id="batch-reject-button" class="review-button review-reject" type="button" data-batch-review-action="rejected">Reject</button>
+        `,
+      );
+    }
+  } else if (status === "approved") {
+    toolbar.hidden = selectedCount === 0;
+    if (selectedCount > 0) {
+      actions.insertAdjacentHTML(
+        "beforeend",
+        `<button id="batch-reject-button" class="review-button review-reject" type="button" data-batch-review-action="rejected">Move to rejected</button>`,
+      );
+    }
+  } else if (status === "rejected") {
+    toolbar.hidden = selectedCount === 0;
+    if (selectedCount > 0) {
+      actions.insertAdjacentHTML(
+        "beforeend",
+        `
+          <button id="batch-approve-button" class="review-button review-approve" type="button" data-batch-review-action="approved">Restore</button>
+          <button id="delete-selected-rejected-button" class="review-button review-delete" type="button" data-delete-selected-rejected="true" ${selectedRejectedCount === 0 ? "disabled" : ""}>Delete permanently</button>
+        `,
+      );
+      if (visibleRejectedCount > 0) {
+        actions.insertAdjacentHTML(
+          "beforeend",
+          `<button id="delete-visible-rejected-button" class="review-button review-delete" type="button" data-delete-visible-rejected="true">Delete all rejected currently visible</button>`,
+        );
+      }
+    }
+  } else {
+    toolbar.hidden = true;
+  }
+
+  document.getElementById("selection-summary").textContent =
+    selectedCount === 1 ? "1 selected" : `${selectedCount} selected`;
+}
+
 function createActivityCard(activity) {
   const activityLabel = safeText(activity.faculty_name) || "General CSE activity";
   const summary = safeText(activity.ai_summary);
-  const reviewControls =
-    activity.review_status === "pending"
-      ? `
-        <div class="review-actions">
-          <button class="review-button review-approve" type="button" data-review-action="approved" data-activity-id="${activity.id}">Approve</button>
-          <button class="review-button review-reject" type="button" data-review-action="rejected" data-activity-id="${activity.id}">Reject</button>
-        </div>
+  const isSelected = state.selectedActivityIds.has(activity.id);
+  const selected = isSelected ? "checked" : "";
+  const selectControl = isActionableTab()
+    ? `
+        <label class="activity-select" aria-label="Select activity">
+          <input type="checkbox" data-select-activity-id="${activity.id}" ${selected} />
+        </label>
       `
-      : "";
+    : "";
+  let reviewControls = "";
+
+  if (isSelected) {
+    reviewControls = "";
+  } else if (state.filters.reviewStatus === "pending") {
+    reviewControls = `
+      <div class="review-actions">
+        <button class="review-button review-approve" type="button" data-review-action="approved" data-activity-id="${activity.id}">Approve</button>
+        <button class="review-button review-reject" type="button" data-review-action="rejected" data-activity-id="${activity.id}">Reject</button>
+      </div>
+    `;
+  } else if (state.filters.reviewStatus === "approved") {
+    reviewControls = `
+      <div class="review-actions">
+        <button class="review-button review-reject" type="button" data-review-action="rejected" data-activity-id="${activity.id}">Move to rejected</button>
+      </div>
+    `;
+  } else if (state.filters.reviewStatus === "rejected") {
+    reviewControls = `
+      <div class="review-actions">
+        <button class="review-button review-approve" type="button" data-review-action="approved" data-activity-id="${activity.id}">Move to approved</button>
+        <button class="review-button review-delete" type="button" data-delete-activity-id="${activity.id}">Delete permanently</button>
+      </div>
+    `;
+  }
 
   return `
-    <article class="inbox-item" data-activity-id="${activity.id}">
+    <article class="inbox-item ${isSelected ? "is-selected" : ""}" data-activity-id="${activity.id}">
       <div class="inbox-item-header">
+        ${selectControl}
         <h3 class="item-title" title="${activityLabel}">${activityLabel}</h3>
       </div>
       <div class="item-badges">
@@ -198,12 +305,14 @@ function renderInbox() {
     container.className = "inbox-list empty-state";
     container.innerHTML = "No activities match the current filters.";
     renderPagination();
+    updateBatchActions();
     return;
   }
 
   container.className = "inbox-list";
   container.innerHTML = state.paginatedActivities.map(createActivityCard).join("");
   renderPagination();
+  updateBatchActions();
 }
 
 function renderSpotlight() {
@@ -373,6 +482,7 @@ function applyDigestWindowFromInputs() {
 
 function applyFiltersAndRender() {
   state.filteredActivities = filterActivities(state.activities);
+  pruneSelection();
   updatePaginatedActivities();
   state.highPriority = state.filteredActivities.filter((item) => item.priority >= 4);
 
@@ -431,6 +541,8 @@ function updateStatusTabs() {
 function updateStatusFilter(nextStatus) {
   state.filters.reviewStatus = nextStatus;
   state.pagination.page = 1;
+  clearSelection();
+  updateBatchActions();
   loadActivityPage();
 }
 
@@ -493,12 +605,15 @@ function closeDetailModal() {
 }
 
 async function handleReviewAction(activityId, nextState, button) {
-  const endpoint = nextState === "approved" ? "approve" : "reject";
   button.disabled = true;
   setStatus(`Updating review status to ${nextState}...`, "loading");
 
   try {
-    const updated = await fetchPayload(`/activities/${activityId}/${endpoint}`, { method: "POST" });
+    const updated = await fetchPayload(`/activities/${activityId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ review_status: nextState }),
+    });
     state.activities = state.activities.map((activity) => (activity.id === updated.id ? updated : activity));
     await loadActivityPage();
     setStatus(`Activity ${nextState}.`, "success");
@@ -506,6 +621,89 @@ async function handleReviewAction(activityId, nextState, button) {
     button.disabled = false;
     setStatus("Review update failed.", "error");
     console.error(error);
+  }
+}
+
+async function handleBatchReviewAction(nextState) {
+  const ids = Array.from(state.selectedActivityIds);
+  if (!ids.length) {
+    return;
+  }
+
+  setStatus(`Updating ${ids.length} selected activities...`, "loading");
+
+  try {
+    const result = await fetchPayload("/activities/batch", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, review_status: nextState }),
+    });
+    clearSelection();
+    await loadActivityPage();
+    setStatus(`Updated ${result.updated_count} activities.`, "success");
+  } catch (error) {
+    setStatus("Batch review update failed.", "error");
+    console.error(error);
+  }
+}
+
+function openDeleteConfirm(ids, noun = "selected activities") {
+  const rejectedIds = ids.filter((activityId) => {
+    const activity = state.activities.find((item) => item.id === activityId);
+    return activity && activity.review_status === "rejected";
+  });
+  if (!rejectedIds.length) {
+    return;
+  }
+
+  state.pendingDeleteIds = rejectedIds;
+  const modal = document.getElementById("delete-confirm-modal");
+  const message = document.getElementById("delete-confirm-message");
+  message.textContent =
+    rejectedIds.length === 1
+      ? "You are about to permanently delete this activity. This action is irreversible. Do you want to continue?"
+      : `You are about to permanently delete ${rejectedIds.length} ${noun}. This action is irreversible. Do you want to continue?`;
+  modal.classList.remove("modal-hidden");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeDeleteConfirm() {
+  state.pendingDeleteIds = [];
+  const modal = document.getElementById("delete-confirm-modal");
+  modal.classList.add("modal-hidden");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+async function confirmDeleteActivities() {
+  const ids = state.pendingDeleteIds;
+  if (!ids.length) {
+    closeDeleteConfirm();
+    return;
+  }
+
+  const button = document.getElementById("delete-confirm-button");
+  button.disabled = true;
+  setStatus(`Deleting ${ids.length} rejected activities...`, "loading");
+
+  try {
+    if (ids.length === 1) {
+      await fetchPayload(`/activities/${ids[0]}`, { method: "DELETE" });
+    } else {
+      await fetchPayload("/activities/batch", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+    }
+    ids.forEach((activityId) => state.selectedActivityIds.delete(activityId));
+    closeDeleteConfirm();
+    await loadActivityPage();
+    setStatus(ids.length === 1 ? "Activity deleted." : `Deleted ${ids.length} rejected activities.`, "success");
+  } catch (error) {
+    setStatus("Delete failed.", "error");
+    console.error(error);
+  } finally {
+    button.disabled = false;
   }
 }
 
@@ -598,6 +796,28 @@ function bindStaticEvents() {
   document.getElementById("search-filter").addEventListener("input", applyFiltersFromInputs);
   document.getElementById("category-filter").addEventListener("change", applyFiltersFromInputs);
   document.getElementById("clear-filters-button").addEventListener("click", clearFilters);
+  document.getElementById("batch-toolbar").addEventListener("click", (event) => {
+    const reviewButton = event.target.closest("[data-batch-review-action]");
+    if (reviewButton) {
+      handleBatchReviewAction(reviewButton.dataset.batchReviewAction);
+      return;
+    }
+
+    if (event.target.closest("[data-delete-selected-rejected]")) {
+      openDeleteConfirm(Array.from(state.selectedActivityIds));
+      return;
+    }
+
+    if (event.target.closest("[data-delete-visible-rejected]")) {
+      openDeleteConfirm(
+        getVisibleRejectedActivities().map((activity) => activity.id),
+        "currently visible rejected activities",
+      );
+    }
+  });
+  document.getElementById("delete-cancel-button").addEventListener("click", closeDeleteConfirm);
+  document.getElementById("delete-confirm-button").addEventListener("click", confirmDeleteActivities);
+  document.querySelector("[data-close-delete-modal='true']").addEventListener("click", closeDeleteConfirm);
   document.querySelectorAll("[data-status-tab]").forEach((button) => {
     button.addEventListener("click", () => updateStatusFilter(button.dataset.statusTab));
   });
@@ -620,6 +840,28 @@ function bindStaticEvents() {
 
 function bindDynamicEvents() {
   document.getElementById("activity-inbox").addEventListener("click", (event) => {
+    const selectBox = event.target.closest("[data-select-activity-id]");
+    if (selectBox) {
+      event.stopPropagation();
+      const card = selectBox.closest("[data-activity-id]");
+      if (selectBox.checked) {
+        state.selectedActivityIds.add(selectBox.dataset.selectActivityId);
+        card?.classList.add("is-selected");
+      } else {
+        state.selectedActivityIds.delete(selectBox.dataset.selectActivityId);
+        card?.classList.remove("is-selected");
+      }
+      updateBatchActions();
+      return;
+    }
+
+    const deleteButton = event.target.closest("[data-delete-activity-id]");
+    if (deleteButton) {
+      event.stopPropagation();
+      openDeleteConfirm([deleteButton.dataset.deleteActivityId]);
+      return;
+    }
+
     const reviewButton = event.target.closest("[data-review-action]");
     if (reviewButton) {
       event.stopPropagation();
