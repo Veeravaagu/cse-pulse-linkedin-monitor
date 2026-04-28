@@ -1,4 +1,5 @@
 import json
+from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -10,6 +11,20 @@ from app.main import app
 from app.models.schemas import ActivityCategory, RawEmail, ReviewStatus
 from app.services.public_fetch_mode import PublicFetchModeStore
 from app.services.storage import JSONStorageService
+
+
+@pytest.fixture(autouse=True)
+def _allow_admin_routes_for_legacy_api_tests() -> Generator[None, None, None]:
+    original_password = routes.settings.admin_password
+    routes.settings.admin_password = "test-admin-password"
+    app.dependency_overrides[routes.require_admin] = lambda: None
+    app.dependency_overrides[routes.require_admin_dashboard] = lambda: None
+    try:
+        yield
+    finally:
+        app.dependency_overrides.pop(routes.require_admin, None)
+        app.dependency_overrides.pop(routes.require_admin_dashboard, None)
+        routes.settings.admin_password = original_password
 
 
 def _seed_activity_file(file_path: str) -> None:

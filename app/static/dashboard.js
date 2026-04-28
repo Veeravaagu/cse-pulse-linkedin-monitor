@@ -741,15 +741,26 @@ async function loadDashboard({ digestOnly = false } = {}) {
   if (!digestOnly) {
     setInlineFeedback("inbox-feedback", "Loading activity inbox...");
   }
-  setInlineFeedback("digest-feedback", "Loading digest workspace...");
+  if (!isPublicView) {
+    setInlineFeedback("digest-feedback", "Loading digest workspace...");
+  }
 
   try {
-    if (!digestOnly) {
-      if (isPublicView) {
+    if (isPublicView) {
+      if (!digestOnly) {
         await loadPublicActivities();
-      } else {
-        await loadActivityPage();
       }
+      state.digest = null;
+      state.digestPreview = "Digest preview is unavailable in public view.";
+      state.digestMarkdown = "Digest markdown export is unavailable in public view.";
+      renderDigestWorkspace();
+      setInlineFeedback("digest-feedback", "Digest workspace is admin-only.");
+      setStatus(digestOnly ? "Public view is read-only." : "Dashboard is live.", "success");
+      return;
+    }
+
+    if (!digestOnly) {
+      await loadActivityPage();
     }
 
     const digestQuery = buildDigestQuery();
@@ -836,9 +847,14 @@ function bindStaticEvents() {
   } else {
     ingestButton.hidden = true;
   }
-  document.getElementById("digest-refresh-button").addEventListener("click", () => loadDashboard({ digestOnly: true }));
-  document.getElementById("digest-start-date").addEventListener("change", applyDigestWindowFromInputs);
-  document.getElementById("digest-end-date").addEventListener("change", applyDigestWindowFromInputs);
+  const digestRefreshButton = document.getElementById("digest-refresh-button");
+  if (!isPublicView) {
+    digestRefreshButton.addEventListener("click", () => loadDashboard({ digestOnly: true }));
+    document.getElementById("digest-start-date").addEventListener("change", applyDigestWindowFromInputs);
+    document.getElementById("digest-end-date").addEventListener("change", applyDigestWindowFromInputs);
+  } else {
+    digestRefreshButton.hidden = true;
+  }
   document.getElementById("search-filter").addEventListener("input", applyFiltersFromInputs);
   document.getElementById("category-filter").addEventListener("change", applyFiltersFromInputs);
   document.getElementById("clear-filters-button").addEventListener("click", clearFilters);

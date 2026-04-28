@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     gmail_credentials_path: str = ""
     gmail_oauth_client_secret_path: str = ""
     gmail_token_path: str = ""
+    admin_password: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

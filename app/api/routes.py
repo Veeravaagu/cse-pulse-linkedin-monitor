@@ -1,8 +1,10 @@
+import secrets
 from pathlib import Path
 from datetime import date, datetime, timezone
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel
 
@@ -21,6 +23,7 @@ from app.services.storage_base import ActivityStorage
 
 router = APIRouter()
 STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
+http_basic = HTTPBasic(auto_error=False)
 
 
 class PublicFetchModePayload(BaseModel):
@@ -52,6 +55,38 @@ sheets = GoogleSheetsClient(
 )
 
 
+def _require_admin(credentials: HTTPBasicCredentials | None) -> None:
+    if not settings.admin_password:
+        raise HTTPException(status_code=500, detail="ADMIN_PASSWORD is not configured.")
+
+    if credentials is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Admin authentication required.",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+    if not secrets.compare_digest(credentials.password, settings.admin_password):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid admin credentials.",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+
+def require_admin(credentials: HTTPBasicCredentials | None = Depends(http_basic)) -> None:
+    _require_admin(credentials)
+
+
+def require_admin_dashboard(
+    request: Request,
+    credentials: HTTPBasicCredentials | None = Depends(http_basic),
+) -> None:
+    if request.query_params.get("public") == "1":
+        return
+    _require_admin(credentials)
+
+
 @router.get("/health")
 def health() -> dict[str, object]:
     activities = storage.list_all()
@@ -64,7 +99,7 @@ def health() -> dict[str, object]:
 
 
 @router.get("/", include_in_schema=False)
-def dashboard() -> FileResponse:
+def dashboard(_: None = Depends(require_admin_dashboard)) -> FileResponse:
     """Serve the small demo dashboard."""
 
     return FileResponse(STATIC_DIR / "dashboard.html")
@@ -81,6 +116,7 @@ def digest_preview(
     start_date: date | None = None,
     end_date: date | None = None,
     review_status: ReviewStatus | None = None,
+    _: None = Depends(require_admin),
 ) -> str:
     return _build_digest_service().generate_preview(
         start_date=start_date,
@@ -95,6 +131,7 @@ def digest(
     end_date: date | None = None,
     review_status: ReviewStatus | None = None,
     max_items_per_category: int | None = Query(default=None, ge=1),
+    _: None = Depends(require_admin),
 ) -> dict[str, object]:
     return _build_digest_service().generate_structured(
         start_date=start_date,
@@ -112,6 +149,7 @@ def digest_export_markdown(
     max_items_per_category: int | None = Query(default=None, ge=1),
     include_section_totals: bool = False,
     summary_max_length: int | None = Query(default=None, ge=1),
+    _: None = Depends(require_admin),
 ) -> str:
     return _build_digest_service().generate_markdown_export(
         start_date=start_date,
@@ -131,6 +169,7 @@ def list_activities(
     sort_order: Literal["asc", "desc"] = "desc",
     offset: int = Query(default=0, ge=0),
     limit: int | None = Query(default=None, ge=1),
+    _: None = Depends(require_admin),
 ) -> list[ActivityRecord]:
     return storage.list_activities(
         category=category,
@@ -151,6 +190,7 @@ def list_activity_page(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=25, ge=1),
     days: int | None = Query(default=None, ge=1),
+    _: None = Depends(require_admin),
 ) -> dict[str, object]:
     filtered = storage.list_activities(
         category=category,
@@ -178,12 +218,12 @@ def list_activity_page(
 
 
 @router.get("/activities/high-priority", response_model=list[ActivityRecord])
-def high_priority() -> list[ActivityRecord]:
+def high_priority(_: None = Depends(require_admin)) -> list[ActivityRecord]:
     return storage.list_high_priority(threshold=4)
 
 
 @router.get("/activities/approved", response_model=list[ActivityRecord])
-def list_approved_activities() -> list[ActivityRecord]:
+def list_approved_activities(_: None = Depends(require_admin)) -> list[ActivityRecord]:
     return storage.list_activities(review_status=ReviewStatus.approved)
 
 
@@ -207,12 +247,18 @@ def get_public_fetch_mode() -> dict[str, PublicFetchMode]:
 
 
 @router.put("/activities/public/mode")
-def update_public_fetch_mode(payload: PublicFetchModePayload) -> dict[str, PublicFetchMode]:
+def update_public_fetch_mode(
+    payload: PublicFetchModePayload,
+    _: None = Depends(require_admin),
+) -> dict[str, PublicFetchMode]:
     return {"mode": public_fetch_mode_store.set_mode(payload.mode)}
 
 
 @router.patch("/activities/batch")
-def batch_update_activity_review_status(payload: BatchActivityReviewStatusPayload) -> dict[str, int]:
+def batch_update_activity_review_status(
+    payload: BatchActivityReviewStatusPayload,
+    _: None = Depends(require_admin),
+) -> dict[str, int]:
     review_status = ReviewStatus(payload.review_status)
     updated_count = 0
 
@@ -224,12 +270,15 @@ def batch_update_activity_review_status(payload: BatchActivityReviewStatusPayloa
 
 
 @router.delete("/activities/batch")
-def batch_delete_rejected_activities(payload: BatchActivityDeletePayload) -> dict[str, int]:
+def batch_delete_rejected_activities(
+    payload: BatchActivityDeletePayload,
+    _: None = Depends(require_admin),
+) -> dict[str, int]:
     return {"deleted_count": storage.delete_rejected_many(payload.ids)}
 
 
 @router.get("/activities/{activity_id}", response_model=ActivityRecord)
-def get_activity(activity_id: str) -> ActivityRecord:
+def get_activity(activity_id: str, _: None = Depends(require_admin)) -> ActivityRecord:
     record = storage.get_by_id(activity_id)
     if not record:
         raise HTTPException(status_code=404, detail="Activity not found")
@@ -240,6 +289,7 @@ def get_activity(activity_id: str) -> ActivityRecord:
 def update_activity_review_status(
     activity_id: str,
     payload: ActivityReviewStatusPayload,
+    _: None = Depends(require_admin),
 ) -> ActivityRecord:
     record = storage.update_review_status(activity_id, ReviewStatus(payload.review_status))
     if not record:
@@ -248,12 +298,12 @@ def update_activity_review_status(
 
 
 @router.delete("/activities/{activity_id}")
-def delete_rejected_activity(activity_id: str) -> dict[str, bool]:
+def delete_rejected_activity(activity_id: str, _: None = Depends(require_admin)) -> dict[str, bool]:
     return {"deleted": storage.delete_rejected(activity_id)}
 
 
 @router.post("/activities/{activity_id}/approve", response_model=ActivityRecord)
-def approve_activity(activity_id: str) -> ActivityRecord:
+def approve_activity(activity_id: str, _: None = Depends(require_admin)) -> ActivityRecord:
     record = storage.update_review_status(activity_id, ReviewStatus.approved)
     if not record:
         raise HTTPException(status_code=404, detail="Activity not found")
@@ -261,7 +311,7 @@ def approve_activity(activity_id: str) -> ActivityRecord:
 
 
 @router.post("/activities/{activity_id}/reject", response_model=ActivityRecord)
-def reject_activity(activity_id: str) -> ActivityRecord:
+def reject_activity(activity_id: str, _: None = Depends(require_admin)) -> ActivityRecord:
     record = storage.update_review_status(activity_id, ReviewStatus.rejected)
     if not record:
         raise HTTPException(status_code=404, detail="Activity not found")
@@ -310,5 +360,5 @@ def _run_ingestion(mode: str | None = None) -> IngestResponse:
 
 
 @router.post("/ingest", response_model=IngestResponse)
-def ingest_emails() -> IngestResponse:
+def ingest_emails(_: None = Depends(require_admin)) -> IngestResponse:
     return _run_ingestion(mode="gmail")
