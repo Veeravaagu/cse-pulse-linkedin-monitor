@@ -21,6 +21,7 @@ const state = {
     startDate: "",
     endDate: "",
   },
+  publicFeedMode: "manual",
   selectedActivityIds: new Set(),
   pendingDeleteIds: [],
 };
@@ -577,6 +578,60 @@ async function loadPublicActivities() {
   applyFiltersAndRender();
 }
 
+async function loadPublicFeedMode() {
+  if (isPublicView) {
+    return;
+  }
+  const select = document.getElementById("public-mode-select");
+  try {
+    const payload = await fetchPayload("/activities/public/mode");
+    const mode = payload && payload.mode === "auto" ? "auto" : "manual";
+    state.publicFeedMode = mode;
+    select.disabled = false;
+    select.value = mode;
+    setInlineFeedback("public-mode-feedback", "");
+  } catch (error) {
+    state.publicFeedMode = "manual";
+    select.disabled = true;
+    select.value = "";
+    setInlineFeedback("public-mode-feedback", "Mode unavailable");
+    console.error(error);
+  }
+}
+
+async function handlePublicFeedModeChange() {
+  if (isPublicView) {
+    return;
+  }
+  const select = document.getElementById("public-mode-select");
+  const nextMode = select.value;
+  const previousMode = state.publicFeedMode;
+
+  if (previousMode === "manual" && nextMode === "auto") {
+    const confirmed = window.confirm("Auto mode will show pending activities publicly before review. Continue?");
+    if (!confirmed) {
+      select.value = previousMode;
+      return;
+    }
+  }
+
+  try {
+    const response = await fetchPayload("/activities/public/mode", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: nextMode }),
+    });
+    state.publicFeedMode = response && response.mode === "auto" ? "auto" : "manual";
+    select.value = state.publicFeedMode;
+    setInlineFeedback("public-mode-feedback", "");
+  } catch (error) {
+    select.value = previousMode;
+    setInlineFeedback("public-mode-feedback", "Unable to update mode");
+    setStatus("Failed to update public feed mode.", "error");
+    console.error(error);
+  }
+}
+
 function updateStatusTabs() {
   document.querySelectorAll("[data-status-tab]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.statusTab === state.filters.reviewStatus);
@@ -780,6 +835,7 @@ async function loadDashboard({ digestOnly = false } = {}) {
     }
 
     if (!digestOnly) {
+      await loadPublicFeedMode();
       await loadActivityPage();
     }
 
@@ -861,6 +917,21 @@ function clearFilters() {
 }
 
 function bindStaticEvents() {
+  const publicModeControl = document.getElementById("public-mode-control");
+  const publicModeSelect = document.getElementById("public-mode-select");
+  const openPublicViewLink = document.getElementById("open-public-view-link");
+  const exportMarkdownButton = document.getElementById("export-markdown-button");
+  const statusTabs = document.querySelector(".status-tabs");
+  const workspacePanel = document.getElementById("workspace");
+  if (isPublicView) {
+    publicModeControl.hidden = true;
+    openPublicViewLink.hidden = true;
+    exportMarkdownButton.hidden = true;
+    statusTabs.hidden = true;
+    workspacePanel.hidden = true;
+  } else {
+    publicModeSelect.addEventListener("change", handlePublicFeedModeChange);
+  }
   const ingestButton = document.getElementById("ingest-button");
   if (!isPublicView) {
     ingestButton.addEventListener("click", runIngestion);
@@ -983,6 +1054,9 @@ function bindDynamicEvents() {
 
 document.addEventListener("DOMContentLoaded", () => {
   state.digestWindow = defaultDigestWindow();
+  if (isPublicView) {
+    state.filters.reviewStatus = "";
+  }
   document.getElementById("digest-start-date").value = state.digestWindow.startDate;
   document.getElementById("digest-end-date").value = state.digestWindow.endDate;
   updateExportLink();

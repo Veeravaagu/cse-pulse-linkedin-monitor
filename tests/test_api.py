@@ -1147,6 +1147,135 @@ def test_public_activities_never_returns_rejected_items(tmp_path) -> None:
         routes.public_fetch_mode_store = original_mode_store
 
 
+def test_public_activities_in_development_allow_missing_api_key(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    mode_file = tmp_path / "public_fetch_mode.json"
+    _seed_public_activity_file(str(data_file))
+    original_storage, original_mode_store = _configure_public_activity_test(data_file, mode_file)
+    original_env = routes.settings.env
+    original_main_dashboard_api_key = routes.settings.main_dashboard_api_key
+    routes.settings.env = "development"
+    routes.settings.main_dashboard_api_key = "production-only-key"
+
+    try:
+        client = TestClient(app)
+        response = client.get("/activities/public")
+
+        assert response.status_code == 200
+        assert [item["id"] for item in response.json()] == ["public-approved"]
+    finally:
+        routes.storage = original_storage
+        routes.public_fetch_mode_store = original_mode_store
+        routes.settings.env = original_env
+        routes.settings.main_dashboard_api_key = original_main_dashboard_api_key
+
+
+def test_public_activities_in_production_reject_missing_api_key(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    mode_file = tmp_path / "public_fetch_mode.json"
+    _seed_public_activity_file(str(data_file))
+    original_storage, original_mode_store = _configure_public_activity_test(data_file, mode_file)
+    original_env = routes.settings.env
+    original_main_dashboard_api_key = routes.settings.main_dashboard_api_key
+    routes.settings.env = "production"
+    routes.settings.main_dashboard_api_key = "prod-key"
+
+    try:
+        client = TestClient(app)
+        response = client.get("/activities/public")
+
+        assert response.status_code == 401
+    finally:
+        routes.storage = original_storage
+        routes.public_fetch_mode_store = original_mode_store
+        routes.settings.env = original_env
+        routes.settings.main_dashboard_api_key = original_main_dashboard_api_key
+
+
+def test_public_activities_in_production_reject_wrong_api_key(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    mode_file = tmp_path / "public_fetch_mode.json"
+    _seed_public_activity_file(str(data_file))
+    original_storage, original_mode_store = _configure_public_activity_test(data_file, mode_file)
+    original_env = routes.settings.env
+    original_main_dashboard_api_key = routes.settings.main_dashboard_api_key
+    routes.settings.env = "production"
+    routes.settings.main_dashboard_api_key = "prod-key"
+
+    try:
+        client = TestClient(app)
+        response = client.get("/activities/public", headers={"X-API-Key": "wrong-key"})
+
+        assert response.status_code == 403
+    finally:
+        routes.storage = original_storage
+        routes.public_fetch_mode_store = original_mode_store
+        routes.settings.env = original_env
+        routes.settings.main_dashboard_api_key = original_main_dashboard_api_key
+
+
+def test_public_activities_in_production_accept_correct_api_key(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    mode_file = tmp_path / "public_fetch_mode.json"
+    _seed_public_activity_file(str(data_file))
+    original_storage, original_mode_store = _configure_public_activity_test(data_file, mode_file)
+    original_env = routes.settings.env
+    original_main_dashboard_api_key = routes.settings.main_dashboard_api_key
+    routes.settings.env = "production"
+    routes.settings.main_dashboard_api_key = "prod-key"
+
+    try:
+        client = TestClient(app)
+        response = client.get("/activities/public", headers={"X-API-Key": "prod-key"})
+
+        assert response.status_code == 200
+        assert [item["id"] for item in response.json()] == ["public-approved"]
+    finally:
+        routes.storage = original_storage
+        routes.public_fetch_mode_store = original_mode_store
+        routes.settings.env = original_env
+        routes.settings.main_dashboard_api_key = original_main_dashboard_api_key
+
+
+def test_public_mode_endpoint_remains_public_in_production(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    mode_file = tmp_path / "public_fetch_mode.json"
+    _seed_public_activity_file(str(data_file))
+    original_storage, original_mode_store = _configure_public_activity_test(data_file, mode_file)
+    original_env = routes.settings.env
+    original_main_dashboard_api_key = routes.settings.main_dashboard_api_key
+    routes.settings.env = "production"
+    routes.settings.main_dashboard_api_key = "prod-key"
+
+    try:
+        client = TestClient(app)
+        response = client.get("/activities/public/mode")
+
+        assert response.status_code == 200
+        assert "mode" in response.json()
+    finally:
+        routes.storage = original_storage
+        routes.public_fetch_mode_store = original_mode_store
+        routes.settings.env = original_env
+        routes.settings.main_dashboard_api_key = original_main_dashboard_api_key
+
+
+def test_public_preview_page_remains_accessible_in_production() -> None:
+    original_env = routes.settings.env
+    original_main_dashboard_api_key = routes.settings.main_dashboard_api_key
+    routes.settings.env = "production"
+    routes.settings.main_dashboard_api_key = "prod-key"
+
+    try:
+        client = TestClient(app)
+        response = client.get("/?public=1")
+
+        assert response.status_code == 200
+    finally:
+        routes.settings.env = original_env
+        routes.settings.main_dashboard_api_key = original_main_dashboard_api_key
+
+
 def test_digest_preview_returns_plain_text_digest(tmp_path) -> None:
     data_file = tmp_path / "activities.json"
     _seed_activity_file(str(data_file))

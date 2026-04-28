@@ -145,6 +145,20 @@ def require_csrf(request: Request) -> None:
         raise HTTPException(status_code=403, detail="CSRF token missing or invalid.")
 
 
+def require_main_dashboard_api_key(request: Request) -> None:
+    if settings.env.lower() != "production":
+        return
+
+    if not settings.main_dashboard_api_key:
+        raise HTTPException(status_code=500, detail="MAIN_DASHBOARD_API_KEY is not configured.")
+
+    api_key = request.headers.get("X-API-Key")
+    if not api_key:
+        raise HTTPException(status_code=401, detail="X-API-Key header required.")
+    if not hmac.compare_digest(api_key, settings.main_dashboard_api_key):
+        raise HTTPException(status_code=403, detail="Invalid API key.")
+
+
 def _render_login_page(error: str = "", status_code: int = 200) -> HTMLResponse:
     error_markup = f'<p style="color:#b42318;margin:0 0 12px 0;">{error}</p>' if error else ""
     html = f"""<!DOCTYPE html>
@@ -376,7 +390,7 @@ def list_approved_activities(_: None = Depends(require_admin)) -> list[ActivityR
 
 
 @router.get("/activities/public", response_model=list[ActivityRecord])
-def list_public_activities() -> list[ActivityRecord]:
+def list_public_activities(_: None = Depends(require_main_dashboard_api_key)) -> list[ActivityRecord]:
     mode = public_fetch_mode_store.get_mode()
     allowed_statuses = {ReviewStatus.approved}
     if mode == "auto":

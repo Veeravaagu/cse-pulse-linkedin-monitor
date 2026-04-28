@@ -108,6 +108,18 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
+Required local env vars (set placeholder values in `.env`):
+
+```env
+ENV=development
+ADMIN_USERNAME=<local-admin-username>
+ADMIN_PASSWORD=<local-admin-password>
+ADMIN_SESSION_SECRET=<long-random-local-secret>
+MAIN_DASHBOARD_API_KEY=<optional-in-development>
+INGESTION_MODE=mock
+DATA_FILE=data/activities.json
+```
+
 Recommended starting configuration:
 
 ```env
@@ -137,6 +149,7 @@ The dashboard is served by the same FastAPI process. No separate frontend build 
 After starting the backend, open:
 
 - `http://127.0.0.1:8000/`
+- Public preview: `http://127.0.0.1:8000/?public=1`
 
 Suggested demo actions:
 - run Gmail ingestion from the UI
@@ -242,6 +255,12 @@ By default the script posts to `http://127.0.0.1:8000/ingest`. To target another
 INGESTION_BASE_URL=http://127.0.0.1:8000 .venv/bin/python scripts/run_daily_ingestion.py
 ```
 
+Sample daily cron entry:
+
+```cron
+0 8 * * * cd <project> && .venv/bin/python scripts/run_daily_ingestion.py
+```
+
 For Gmail ingestion, successful runs store `last_successful_ingestion_at` in `data/ingestion_state.json` by default. Later runs use that cursor to query only newer Gmail messages where possible, while existing duplicate protection still prevents duplicate stored activities. Failed ingestion runs should not advance the cursor. Delete or reset the state file to force a wider local re-run.
 
 Do not use `echo "[]" > data/activities.json` or `printf '[]\n' > data/activities.json` as a normal reset workflow. That deletes approved and rejected history as well as pending test clutter. For local cleanup that preserves reviewed history, clear only pending activities:
@@ -277,6 +296,49 @@ Notes:
 - if sync is disabled or incomplete, ingestion continues normally
 - if Google client libraries or credentials are unavailable, the sync path safely no-ops
 - the current implementation appends rows; it does not yet deduplicate or update existing rows
+
+## Production Configuration
+
+Required production env vars:
+
+```env
+ENV=production
+ADMIN_USERNAME=<admin-username>
+ADMIN_PASSWORD=<admin-password>
+ADMIN_SESSION_SECRET=<long-random-secret>
+MAIN_DASHBOARD_API_KEY=<long-random-api-key>
+DATA_FILE=<persistent-path>/activities.json
+INGESTION_MODE=<mock-or-gmail>
+GMAIL_CREDENTIALS_PATH=<optional-service-account-json-path>
+GMAIL_OAUTH_CLIENT_SECRET_PATH=<optional-oauth-client-secret-path>
+GMAIL_TOKEN_PATH=<optional-oauth-token-path>
+```
+
+Security notes:
+- Never commit `.env` or real secrets.
+- Use a long random value for `ADMIN_SESSION_SECRET`.
+- Use a long random value for `MAIN_DASHBOARD_API_KEY`.
+- `/?public=1` is a read-only preview page.
+- Real downstream integration is `GET /activities/public` with `X-API-Key` in production.
+
+## Main Dashboard Integration Contract
+
+- Endpoint: `GET /activities/public`
+- Production header: `X-API-Key: <MAIN_DASHBOARD_API_KEY>`
+- Returns full activity objects (including `review_status`)
+- `manual` mode returns approved only
+- `auto` mode returns approved + pending
+- Rejected items are never returned
+
+## Deployment Checklist
+
+1. Set production env vars (`ENV`, admin credentials, session secret, API key, storage path, ingestion mode).
+2. Configure Gmail OAuth/service-account secrets if `INGESTION_MODE=gmail`.
+3. Ensure persistent storage for `data/*.json` (or configured equivalent paths).
+4. Configure daily scheduler/cron for `scripts/run_daily_ingestion.py`.
+5. Verify admin login/logout on `/`.
+6. Verify `GET /activities/public` with valid and invalid `X-API-Key`.
+7. Verify public preview page at `/?public=1`.
 
 ## Operational API Reference
 

@@ -142,7 +142,8 @@ select {
   flex-wrap: wrap;
   gap: var(--space-sm);
   justify-content: flex-end;
-  align-items: center;
+  align-items: flex-end;
+  align-content: flex-start;
 }
 
 .button,
@@ -199,8 +200,16 @@ select {
 }
 
 .topbar-actions .button {
-  flex: 1 1 clamp(8.5rem, 12vw, 10rem);
+  flex: 0 0 auto;
   min-width: 0;
+}
+
+.topbar-actions .field {
+  flex: 0 1 13rem;
+}
+
+.topbar-actions #logout-form {
+  display: inline-flex;
 }
 
 .button:disabled,

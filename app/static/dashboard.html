@@ -17,6 +17,17 @@
           </p>
         </div>
         <div class="topbar-actions">
+          <label id="public-mode-control" class="field">
+            <span>Public Feed Mode</span>
+            <select id="public-mode-select">
+              <option value="manual">Manual</option>
+              <option value="auto">Auto</option>
+              <option value="" disabled hidden>Mode unavailable</option>
+            </select>
+          </label>
+          <a id="open-public-view-link" class="button button-inline" href="/?public=1" target="_blank" rel="noreferrer">
+            Open Public View
+          </a>
           <button id="ingest-button" class="button button-primary" type="button">Run Ingestion</button>
           <button id="digest-refresh-button" class="button button-secondary" type="button">Refresh Digest</button>
           <form id="logout-form" method="post" action="/logout">
@@ -44,6 +55,7 @@
             <div class="panel-status">
               <p id="status-message" class="status-message status-neutral">Ready.</p>
               <p id="inbox-feedback" class="inline-feedback inline-feedback-hidden"></p>
+              <p id="public-mode-feedback" class="inline-feedback inline-feedback-hidden"></p>
             </div>
           </div>
 
