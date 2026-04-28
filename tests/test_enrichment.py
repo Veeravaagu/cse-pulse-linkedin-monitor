@@ -148,8 +148,12 @@ def test_ub_cse_newsletter_item_gets_readable_summary_and_headline() -> None:
         raw_text=(
             "Research Matters: Updates from Research, Innovation and Economic Development\n"
             "IN THIS ISSUE: Annual Research Report | Events | News\n"
+            "View in browser: https://mailchi.mp/buffalo/research-matters\n"
+            "Home | News | Events | Contact\n"
             "CSE Seminar: Trustworthy AI for autonomous systems\n"
-            "Professor Maya Lee will present a CSE seminar on trustworthy AI for autonomous systems this Friday."
+            "Professor Maya Lee will present a CSE seminar on trustworthy AI for autonomous systems this Friday.\n"
+            "Follow us on LinkedIn, Facebook, and Instagram\n"
+            "Unsubscribe: https://mailchimp.com/unsubscribe/example"
         ),
         detected_at=datetime.now(timezone.utc),
     )
@@ -163,6 +167,9 @@ def test_ub_cse_newsletter_item_gets_readable_summary_and_headline() -> None:
         "Professor Maya Lee will present a CSE seminar on trustworthy AI for autonomous systems this Friday."
     )
     assert "Research Matters" not in enriched.ai_summary
+    assert "View in browser" not in enriched.ai_summary
+    assert "Home | News | Events | Contact" not in enriched.ai_summary
+    assert "Unsubscribe" not in enriched.ai_summary
 
 
 def test_parser_extracts_obvious_person_from_newsletter_body() -> None:

@@ -28,6 +28,19 @@ class MockProcessor:
         "research matters:",
         "in this issue:",
         "updates from research, innovation and economic development",
+        "view in browser",
+        "manage your preferences",
+        "follow us",
+        "connect with us",
+        "facebook",
+        "instagram",
+        "twitter",
+        "linkedin",
+        "youtube",
+        "navigation",
+        "home |",
+        "news |",
+        "events |",
         "copyright",
         "unsubscribe",
         "all rights reserved",
@@ -116,7 +129,18 @@ class MockProcessor:
     @classmethod
     def _is_boilerplate(cls, line: str) -> bool:
         lowered = line.lower()
-        return any(marker in lowered for marker in cls.BOILERPLATE_MARKERS)
+        if any(marker in lowered for marker in cls.BOILERPLATE_MARKERS):
+            return True
+        if lowered.startswith(("view online", "view this email", "to unsubscribe", "unsubscribe", "click here")):
+            return True
+        compact = lowered.strip(" .:-|")
+        if compact in {"home", "news", "events", "about", "contact"}:
+            return True
+        if compact.count("|") >= 2 and len(compact) <= 120:
+            return True
+        if compact.startswith("http://") or compact.startswith("https://"):
+            return True
+        return False
 
     @staticmethod
     def _as_sentence(line: str) -> str:
