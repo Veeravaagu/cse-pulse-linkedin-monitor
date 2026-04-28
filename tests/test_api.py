@@ -740,6 +740,138 @@ def test_reject_activity_by_id(tmp_path) -> None:
         routes.storage = original_storage
 
 
+def test_patch_activity_allows_approved_to_rejected(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    _seed_activity_file(str(data_file))
+    storage = JSONStorageService(str(data_file))
+    storage.update_review_status("activity-1", ReviewStatus.approved)
+    original_storage = routes.storage
+    routes.storage = storage
+
+    try:
+        client = TestClient(app)
+        response = client.patch(
+            "/activities/activity-1",
+            json={"review_status": ReviewStatus.rejected.value},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["id"] == "activity-1"
+        assert payload["review_status"] == ReviewStatus.rejected.value
+    finally:
+        routes.storage = original_storage
+
+
+def test_patch_activity_allows_rejected_to_approved(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    _seed_activity_file(str(data_file))
+    storage = JSONStorageService(str(data_file))
+    storage.update_review_status("activity-3", ReviewStatus.rejected)
+    original_storage = routes.storage
+    routes.storage = storage
+
+    try:
+        client = TestClient(app)
+        response = client.patch(
+            "/activities/activity-3",
+            json={"review_status": ReviewStatus.approved.value},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["id"] == "activity-3"
+        assert payload["review_status"] == ReviewStatus.approved.value
+    finally:
+        routes.storage = original_storage
+
+
+def test_batch_approve_updates_multiple_pending_items(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    _seed_activity_file(str(data_file))
+    original_storage = routes.storage
+    routes.storage = JSONStorageService(str(data_file))
+
+    try:
+        client = TestClient(app)
+        response = client.patch(
+            "/activities/batch",
+            json={
+                "ids": ["activity-1", "activity-3"],
+                "review_status": ReviewStatus.approved.value,
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"updated_count": 2}
+        approved_ids = [
+            item["id"]
+            for item in client.get(
+                "/activities",
+                params={"review_status": ReviewStatus.approved.value},
+            ).json()
+        ]
+        assert approved_ids == ["activity-3", "activity-1"]
+    finally:
+        routes.storage = original_storage
+
+
+def test_batch_reject_updates_multiple_approved_items(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    _seed_activity_file(str(data_file))
+    storage = JSONStorageService(str(data_file))
+    storage.update_review_status("activity-1", ReviewStatus.approved)
+    storage.update_review_status("activity-3", ReviewStatus.approved)
+    original_storage = routes.storage
+    routes.storage = storage
+
+    try:
+        client = TestClient(app)
+        response = client.patch(
+            "/activities/batch",
+            json={
+                "ids": ["activity-1", "activity-3"],
+                "review_status": ReviewStatus.rejected.value,
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"updated_count": 2}
+        rejected_ids = [
+            item["id"]
+            for item in client.get(
+                "/activities",
+                params={"review_status": ReviewStatus.rejected.value},
+            ).json()
+        ]
+        assert rejected_ids == ["activity-3", "activity-1"]
+    finally:
+        routes.storage = original_storage
+
+
+def test_batch_update_ignores_nonexistent_ids(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    _seed_activity_file(str(data_file))
+    original_storage = routes.storage
+    routes.storage = JSONStorageService(str(data_file))
+
+    try:
+        client = TestClient(app)
+        response = client.patch(
+            "/activities/batch",
+            json={
+                "ids": ["activity-1", "missing-activity"],
+                "review_status": ReviewStatus.approved.value,
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"updated_count": 1}
+        assert client.get("/activities/missing-activity").status_code == 404
+    finally:
+        routes.storage = original_storage
+
+
 def test_approved_activity_no_longer_appears_pending(tmp_path) -> None:
     data_file = tmp_path / "activities.json"
     _seed_activity_file(str(data_file))

@@ -26,6 +26,16 @@ STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 class PublicFetchModePayload(BaseModel):
     mode: PublicFetchMode
 
+
+class ActivityReviewStatusPayload(BaseModel):
+    review_status: Literal["approved", "rejected", "pending"]
+
+
+class BatchActivityReviewStatusPayload(BaseModel):
+    ids: list[str]
+    review_status: Literal["approved", "rejected"]
+
+
 parser = GmailParser()
 storage: ActivityStorage = JSONStorageService(settings.data_file)
 ingestion_state = IngestionStateStore(settings.ingestion_state_file)
@@ -197,9 +207,32 @@ def update_public_fetch_mode(payload: PublicFetchModePayload) -> dict[str, Publi
     return {"mode": public_fetch_mode_store.set_mode(payload.mode)}
 
 
+@router.patch("/activities/batch")
+def batch_update_activity_review_status(payload: BatchActivityReviewStatusPayload) -> dict[str, int]:
+    review_status = ReviewStatus(payload.review_status)
+    updated_count = 0
+
+    for activity_id in payload.ids:
+        if storage.update_review_status(activity_id, review_status):
+            updated_count += 1
+
+    return {"updated_count": updated_count}
+
+
 @router.get("/activities/{activity_id}", response_model=ActivityRecord)
 def get_activity(activity_id: str) -> ActivityRecord:
     record = storage.get_by_id(activity_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    return record
+
+
+@router.patch("/activities/{activity_id}", response_model=ActivityRecord)
+def update_activity_review_status(
+    activity_id: str,
+    payload: ActivityReviewStatusPayload,
+) -> ActivityRecord:
+    record = storage.update_review_status(activity_id, ReviewStatus(payload.review_status))
     if not record:
         raise HTTPException(status_code=404, detail="Activity not found")
     return record
