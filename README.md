@@ -225,16 +225,22 @@ Automatic daily ingestion should be run outside the app with cron. The FastAPI a
 
 ```bash
 cd /path/to/cse-pulse-linkedin-monitor
-.venv/bin/python scripts/run_ingestion_once.py
+.venv/bin/python scripts/run_daily_ingestion.py
 ```
 
 Sample daily cron entry for local/dev use:
 
 ```cron
-0 8 * * * cd /path/to/cse-pulse-linkedin-monitor && .venv/bin/python scripts/run_ingestion_once.py >> logs/ingestion.log 2>&1
+0 8 * * * cd /path/to/cse-pulse-linkedin-monitor && .venv/bin/python scripts/run_daily_ingestion.py >> logs/ingestion.log 2>&1
 ```
 
 Create the `logs/` directory first if you use the sample redirect. The script does not schedule work itself; cron or another local scheduler calls it once per run.
+
+By default the script posts to `http://127.0.0.1:8000/ingest`. To target another backend, set `INGESTION_BASE_URL` or `INGESTION_URL` before cron runs. For example:
+
+```bash
+INGESTION_BASE_URL=http://127.0.0.1:8000 .venv/bin/python scripts/run_daily_ingestion.py
+```
 
 For Gmail ingestion, successful runs store `last_successful_ingestion_at` in `data/ingestion_state.json` by default. Later runs use that cursor to query only newer Gmail messages where possible, while existing duplicate protection still prevents duplicate stored activities. Failed ingestion runs should not advance the cursor. Delete or reset the state file to force a wider local re-run.
 
