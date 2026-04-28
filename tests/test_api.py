@@ -23,11 +23,13 @@ def _allow_admin_routes_for_legacy_api_tests() -> Generator[None, None, None]:
     routes.settings.admin_session_secret = "test-session-secret"
     app.dependency_overrides[routes.require_admin] = lambda: None
     app.dependency_overrides[routes.require_admin_dashboard] = lambda: None
+    app.dependency_overrides[routes.require_csrf] = lambda: None
     try:
         yield
     finally:
         app.dependency_overrides.pop(routes.require_admin, None)
         app.dependency_overrides.pop(routes.require_admin_dashboard, None)
+        app.dependency_overrides.pop(routes.require_csrf, None)
         routes.settings.admin_username = original_username
         routes.settings.admin_password = original_password
         routes.settings.admin_session_secret = original_secret

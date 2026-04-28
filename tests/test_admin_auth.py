@@ -56,6 +56,11 @@ def _restore_admin_config(original: tuple[str, str, str]) -> None:
     routes.settings.admin_username, routes.settings.admin_password, routes.settings.admin_session_secret = original
 
 
+def _csrf_headers(client: TestClient) -> dict[str, str]:
+    token = client.cookies.get("cse_csrf_token", "")
+    return {"X-CSRF-Token": token}
+
+
 def test_login_page_renders_without_auth() -> None:
     original = _set_admin_config()
     try:
@@ -77,6 +82,7 @@ def test_login_valid_credentials_sets_session_cookie() -> None:
         assert response.status_code == 303
         assert response.headers["location"] == "/"
         assert "cse_admin_session" in response.cookies
+        assert "cse_csrf_token" in response.cookies
     finally:
         _restore_admin_config(original)
 
@@ -164,15 +170,18 @@ def test_protected_routes_allow_valid_session_and_logout_clears_it(tmp_path) -> 
         client = TestClient(app, follow_redirects=False)
         login = client.post("/login", data={"username": "admin", "password": "secret-admin"})
         assert login.status_code == 303
+        headers = _csrf_headers(client)
 
         assert client.get("/").status_code == 200
         assert client.get("/activities/page").status_code == 200
-        assert client.put("/activities/public/mode", json={"mode": "auto"}).status_code == 200
+        assert client.put("/activities/public/mode", json={"mode": "auto"}, headers=headers).status_code == 200
         assert client.get("/activities/public/mode").status_code == 200
 
         logout = client.post("/logout")
         assert logout.status_code == 303
         assert logout.headers["location"] == "/login"
+        assert client.cookies.get("cse_admin_session") is None
+        assert client.cookies.get("cse_csrf_token") is None
         assert client.get("/activities/page").status_code == 401
     finally:
         routes.storage = original_storage
@@ -205,3 +214,52 @@ def test_protected_routes_fail_closed_when_admin_config_is_unset() -> None:
         assert "Admin auth is not configured." in login.text
     finally:
         routes.settings.admin_username, routes.settings.admin_password, routes.settings.admin_session_secret = original
+
+
+def test_write_endpoints_require_csrf_token_even_with_valid_session(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    mode_file = tmp_path / "public_fetch_mode.json"
+    _seed_public_activity_file(str(data_file))
+    original_storage = routes.storage
+    original_mode_store = routes.public_fetch_mode_store
+    original_admin = _set_admin_config()
+    routes.storage = JSONStorageService(str(data_file))
+    routes.public_fetch_mode_store = PublicFetchModeStore(str(mode_file))
+
+    try:
+        client = TestClient(app, follow_redirects=False)
+        login = client.post("/login", data={"username": "admin", "password": "secret-admin"})
+        assert login.status_code == 303
+
+        assert client.put("/activities/public/mode", json={"mode": "auto"}).status_code == 403
+        assert client.patch("/activities/public-pending", json={"review_status": "approved"}).status_code == 403
+        assert client.request("DELETE", "/activities/batch", json={"ids": ["public-pending"]}).status_code == 403
+    finally:
+        routes.storage = original_storage
+        routes.public_fetch_mode_store = original_mode_store
+        _restore_admin_config(original_admin)
+
+
+def test_write_endpoints_accept_valid_csrf_token(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    mode_file = tmp_path / "public_fetch_mode.json"
+    _seed_public_activity_file(str(data_file))
+    original_storage = routes.storage
+    original_mode_store = routes.public_fetch_mode_store
+    original_admin = _set_admin_config()
+    routes.storage = JSONStorageService(str(data_file))
+    routes.public_fetch_mode_store = PublicFetchModeStore(str(mode_file))
+
+    try:
+        client = TestClient(app, follow_redirects=False)
+        login = client.post("/login", data={"username": "admin", "password": "secret-admin"})
+        assert login.status_code == 303
+        headers = _csrf_headers(client)
+
+        assert client.put("/activities/public/mode", json={"mode": "auto"}, headers=headers).status_code == 200
+        assert client.patch("/activities/public-pending", json={"review_status": "approved"}, headers=headers).status_code == 200
+        assert client.request("DELETE", "/activities/batch", json={"ids": ["public-pending"]}, headers=headers).status_code == 200
+    finally:
+        routes.storage = original_storage
+        routes.public_fetch_mode_store = original_mode_store
+        _restore_admin_config(original_admin)

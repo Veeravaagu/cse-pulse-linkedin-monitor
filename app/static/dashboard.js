@@ -30,8 +30,28 @@ const isPublicView = (() => {
   return params.get("public") === "1";
 })();
 
+function getCookieValue(name) {
+  const prefix = `${name}=`;
+  const cookies = document.cookie ? document.cookie.split("; ") : [];
+  for (const cookie of cookies) {
+    if (cookie.startsWith(prefix)) {
+      return decodeURIComponent(cookie.slice(prefix.length));
+    }
+  }
+  return "";
+}
+
 async function fetchPayload(url, options = {}) {
-  const response = await fetch(url, options);
+  const method = (options.method || "GET").toUpperCase();
+  const headers = new Headers(options.headers || {});
+  if (!isPublicView && !["GET", "HEAD", "OPTIONS"].includes(method)) {
+    const csrfToken = getCookieValue("cse_csrf_token");
+    if (csrfToken) {
+      headers.set("X-CSRF-Token", csrfToken);
+    }
+  }
+
+  const response = await fetch(url, { ...options, headers });
   if (!response.ok) {
     throw new Error(`Request failed: ${response.status}`);
   }

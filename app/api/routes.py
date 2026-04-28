@@ -26,6 +26,7 @@ from app.services.storage_base import ActivityStorage
 router = APIRouter()
 STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 ADMIN_SESSION_COOKIE = "cse_admin_session"
+CSRF_COOKIE = "cse_csrf_token"
 ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60 * 12
 
 
@@ -65,38 +66,44 @@ def _validate_admin_config() -> None:
         raise HTTPException(status_code=500, detail="ADMIN_SESSION_SECRET is not configured.")
 
 
-def _build_session_signature(username: str, issued_at: int) -> str:
-    payload = f"{username}:{issued_at}".encode("utf-8")
+def _build_session_signature(username: str, issued_at: int, csrf_token: str) -> str:
+    payload = f"{username}:{issued_at}:{csrf_token}".encode("utf-8")
     secret = settings.admin_session_secret.encode("utf-8")
     return hmac.new(secret, payload, hashlib.sha256).hexdigest()
 
 
-def _build_session_cookie(username: str) -> str:
+def _build_session_cookie(username: str, csrf_token: str) -> str:
     issued_at = int(datetime.now(timezone.utc).timestamp())
-    signature = _build_session_signature(username, issued_at)
-    return f"{username}:{issued_at}:{signature}"
+    signature = _build_session_signature(username, issued_at, csrf_token)
+    return f"{username}:{issued_at}:{csrf_token}:{signature}"
 
 
-def _is_valid_session_cookie(cookie_value: str | None) -> bool:
+def _parse_session_cookie(cookie_value: str | None) -> tuple[str, int, str] | None:
     if not cookie_value:
-        return False
+        return None
     parts = cookie_value.split(":")
-    if len(parts) != 3:
-        return False
+    if len(parts) != 4:
+        return None
 
-    username, issued_raw, signature = parts
+    username, issued_raw, csrf_token, signature = parts
     if username != settings.admin_username:
-        return False
+        return None
     if not issued_raw.isdigit():
-        return False
+        return None
 
     issued_at = int(issued_raw)
     now = int(datetime.now(timezone.utc).timestamp())
     if issued_at > now or now - issued_at > ADMIN_SESSION_MAX_AGE_SECONDS:
-        return False
+        return None
 
-    expected = _build_session_signature(username, issued_at)
-    return hmac.compare_digest(signature, expected)
+    expected = _build_session_signature(username, issued_at, csrf_token)
+    if not hmac.compare_digest(signature, expected):
+        return None
+    return username, issued_at, csrf_token
+
+
+def _is_valid_session_cookie(cookie_value: str | None) -> bool:
+    return _parse_session_cookie(cookie_value) is not None
 
 
 def _is_admin_authenticated(request: Request) -> bool:
@@ -121,6 +128,21 @@ def require_admin_dashboard(request: Request) -> None:
     if _is_valid_session_cookie(request.cookies.get(ADMIN_SESSION_COOKIE)):
         return
     raise HTTPException(status_code=401, detail="Admin authentication required.")
+
+
+def require_csrf(request: Request) -> None:
+    session = _parse_session_cookie(request.cookies.get(ADMIN_SESSION_COOKIE))
+    if session is None:
+        raise HTTPException(status_code=401, detail="Admin authentication required.")
+    _, _, session_csrf = session
+    cookie_csrf = request.cookies.get(CSRF_COOKIE, "")
+    header_csrf = request.headers.get("X-CSRF-Token", "")
+    if not header_csrf or not cookie_csrf:
+        raise HTTPException(status_code=403, detail="CSRF token missing or invalid.")
+    if not hmac.compare_digest(header_csrf, cookie_csrf):
+        raise HTTPException(status_code=403, detail="CSRF token missing or invalid.")
+    if not hmac.compare_digest(header_csrf, session_csrf):
+        raise HTTPException(status_code=403, detail="CSRF token missing or invalid.")
 
 
 def _render_login_page(error: str = "", status_code: int = 200) -> HTMLResponse:
@@ -178,11 +200,20 @@ async def login_submit(request: Request) -> Response:
     if not (valid_username and valid_password):
         return _render_login_page(error="Invalid username or password.", status_code=401)
 
+    csrf_token = secrets.token_urlsafe(32)
     response = RedirectResponse(url="/", status_code=303)
     response.set_cookie(
         key=ADMIN_SESSION_COOKIE,
-        value=_build_session_cookie(username=settings.admin_username),
+        value=_build_session_cookie(username=settings.admin_username, csrf_token=csrf_token),
         httponly=True,
+        samesite="lax",
+        max_age=ADMIN_SESSION_MAX_AGE_SECONDS,
+        path="/",
+    )
+    response.set_cookie(
+        key=CSRF_COOKIE,
+        value=csrf_token,
+        httponly=False,
         samesite="lax",
         max_age=ADMIN_SESSION_MAX_AGE_SECONDS,
         path="/",
@@ -194,6 +225,7 @@ async def login_submit(request: Request) -> Response:
 def logout() -> RedirectResponse:
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie(key=ADMIN_SESSION_COOKIE, path="/")
+    response.delete_cookie(key=CSRF_COOKIE, path="/")
     return response
 
 
@@ -366,6 +398,7 @@ def get_public_fetch_mode() -> dict[str, PublicFetchMode]:
 def update_public_fetch_mode(
     payload: PublicFetchModePayload,
     _: None = Depends(require_admin),
+    __: None = Depends(require_csrf),
 ) -> dict[str, PublicFetchMode]:
     return {"mode": public_fetch_mode_store.set_mode(payload.mode)}
 
@@ -374,6 +407,7 @@ def update_public_fetch_mode(
 def batch_update_activity_review_status(
     payload: BatchActivityReviewStatusPayload,
     _: None = Depends(require_admin),
+    __: None = Depends(require_csrf),
 ) -> dict[str, int]:
     review_status = ReviewStatus(payload.review_status)
     updated_count = 0
@@ -389,6 +423,7 @@ def batch_update_activity_review_status(
 def batch_delete_rejected_activities(
     payload: BatchActivityDeletePayload,
     _: None = Depends(require_admin),
+    __: None = Depends(require_csrf),
 ) -> dict[str, int]:
     return {"deleted_count": storage.delete_rejected_many(payload.ids)}
 
@@ -406,6 +441,7 @@ def update_activity_review_status(
     activity_id: str,
     payload: ActivityReviewStatusPayload,
     _: None = Depends(require_admin),
+    __: None = Depends(require_csrf),
 ) -> ActivityRecord:
     record = storage.update_review_status(activity_id, ReviewStatus(payload.review_status))
     if not record:
@@ -414,12 +450,20 @@ def update_activity_review_status(
 
 
 @router.delete("/activities/{activity_id}")
-def delete_rejected_activity(activity_id: str, _: None = Depends(require_admin)) -> dict[str, bool]:
+def delete_rejected_activity(
+    activity_id: str,
+    _: None = Depends(require_admin),
+    __: None = Depends(require_csrf),
+) -> dict[str, bool]:
     return {"deleted": storage.delete_rejected(activity_id)}
 
 
 @router.post("/activities/{activity_id}/approve", response_model=ActivityRecord)
-def approve_activity(activity_id: str, _: None = Depends(require_admin)) -> ActivityRecord:
+def approve_activity(
+    activity_id: str,
+    _: None = Depends(require_admin),
+    __: None = Depends(require_csrf),
+) -> ActivityRecord:
     record = storage.update_review_status(activity_id, ReviewStatus.approved)
     if not record:
         raise HTTPException(status_code=404, detail="Activity not found")
@@ -427,7 +471,11 @@ def approve_activity(activity_id: str, _: None = Depends(require_admin)) -> Acti
 
 
 @router.post("/activities/{activity_id}/reject", response_model=ActivityRecord)
-def reject_activity(activity_id: str, _: None = Depends(require_admin)) -> ActivityRecord:
+def reject_activity(
+    activity_id: str,
+    _: None = Depends(require_admin),
+    __: None = Depends(require_csrf),
+) -> ActivityRecord:
     record = storage.update_review_status(activity_id, ReviewStatus.rejected)
     if not record:
         raise HTTPException(status_code=404, detail="Activity not found")
@@ -476,5 +524,8 @@ def _run_ingestion(mode: str | None = None) -> IngestResponse:
 
 
 @router.post("/ingest", response_model=IngestResponse)
-def ingest_emails(_: None = Depends(require_admin)) -> IngestResponse:
+def ingest_emails(
+    _: None = Depends(require_admin),
+    __: None = Depends(require_csrf),
+) -> IngestResponse:
     return _run_ingestion(mode="gmail")
