@@ -847,6 +847,10 @@ function bindStaticEvents() {
   } else {
     ingestButton.hidden = true;
   }
+  const logoutForm = document.getElementById("logout-form");
+  if (isPublicView) {
+    logoutForm.hidden = true;
+  }
   const digestRefreshButton = document.getElementById("digest-refresh-button");
   if (!isPublicView) {
     digestRefreshButton.addEventListener("click", () => loadDashboard({ digestOnly: true }));

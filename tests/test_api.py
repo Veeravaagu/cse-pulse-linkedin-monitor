@@ -15,8 +15,12 @@ from app.services.storage import JSONStorageService
 
 @pytest.fixture(autouse=True)
 def _allow_admin_routes_for_legacy_api_tests() -> Generator[None, None, None]:
+    original_username = routes.settings.admin_username
     original_password = routes.settings.admin_password
+    original_secret = routes.settings.admin_session_secret
+    routes.settings.admin_username = "test-admin"
     routes.settings.admin_password = "test-admin-password"
+    routes.settings.admin_session_secret = "test-session-secret"
     app.dependency_overrides[routes.require_admin] = lambda: None
     app.dependency_overrides[routes.require_admin_dashboard] = lambda: None
     try:
@@ -24,7 +28,9 @@ def _allow_admin_routes_for_legacy_api_tests() -> Generator[None, None, None]:
     finally:
         app.dependency_overrides.pop(routes.require_admin, None)
         app.dependency_overrides.pop(routes.require_admin_dashboard, None)
+        routes.settings.admin_username = original_username
         routes.settings.admin_password = original_password
+        routes.settings.admin_session_secret = original_secret
 
 
 def _seed_activity_file(file_path: str) -> None:
@@ -187,7 +193,7 @@ def test_health_reports_storage_status_and_activity_count(tmp_path) -> None:
 
 def test_dashboard_page_loads() -> None:
     client = TestClient(app)
-    response = client.get("/")
+    response = client.get("/?public=1")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert "CSE Activity Monitoring Dashboard" in response.text

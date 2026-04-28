@@ -1,11 +1,13 @@
+import hashlib
+import hmac
 import secrets
+from urllib.parse import parse_qs
 from pathlib import Path
 from datetime import date, datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from pydantic import BaseModel
 
 from app.config import settings
@@ -23,7 +25,8 @@ from app.services.storage_base import ActivityStorage
 
 router = APIRouter()
 STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
-http_basic = HTTPBasic(auto_error=False)
+ADMIN_SESSION_COOKIE = "cse_admin_session"
+ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60 * 12
 
 
 class PublicFetchModePayload(BaseModel):
@@ -55,36 +58,143 @@ sheets = GoogleSheetsClient(
 )
 
 
-def _require_admin(credentials: HTTPBasicCredentials | None) -> None:
-    if not settings.admin_password:
-        raise HTTPException(status_code=500, detail="ADMIN_PASSWORD is not configured.")
-
-    if credentials is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Admin authentication required.",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-
-    if not secrets.compare_digest(credentials.password, settings.admin_password):
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid admin credentials.",
-            headers={"WWW-Authenticate": "Basic"},
-        )
+def _validate_admin_config() -> None:
+    if not settings.admin_username or not settings.admin_password:
+        raise HTTPException(status_code=500, detail="Admin auth is not configured.")
+    if not settings.admin_session_secret:
+        raise HTTPException(status_code=500, detail="ADMIN_SESSION_SECRET is not configured.")
 
 
-def require_admin(credentials: HTTPBasicCredentials | None = Depends(http_basic)) -> None:
-    _require_admin(credentials)
+def _build_session_signature(username: str, issued_at: int) -> str:
+    payload = f"{username}:{issued_at}".encode("utf-8")
+    secret = settings.admin_session_secret.encode("utf-8")
+    return hmac.new(secret, payload, hashlib.sha256).hexdigest()
 
 
-def require_admin_dashboard(
-    request: Request,
-    credentials: HTTPBasicCredentials | None = Depends(http_basic),
-) -> None:
+def _build_session_cookie(username: str) -> str:
+    issued_at = int(datetime.now(timezone.utc).timestamp())
+    signature = _build_session_signature(username, issued_at)
+    return f"{username}:{issued_at}:{signature}"
+
+
+def _is_valid_session_cookie(cookie_value: str | None) -> bool:
+    if not cookie_value:
+        return False
+    parts = cookie_value.split(":")
+    if len(parts) != 3:
+        return False
+
+    username, issued_raw, signature = parts
+    if username != settings.admin_username:
+        return False
+    if not issued_raw.isdigit():
+        return False
+
+    issued_at = int(issued_raw)
+    now = int(datetime.now(timezone.utc).timestamp())
+    if issued_at > now or now - issued_at > ADMIN_SESSION_MAX_AGE_SECONDS:
+        return False
+
+    expected = _build_session_signature(username, issued_at)
+    return hmac.compare_digest(signature, expected)
+
+
+def _is_admin_authenticated(request: Request) -> bool:
+    try:
+        _validate_admin_config()
+    except HTTPException:
+        return False
+    return _is_valid_session_cookie(request.cookies.get(ADMIN_SESSION_COOKIE))
+
+
+def require_admin(request: Request) -> None:
+    _validate_admin_config()
+    if _is_valid_session_cookie(request.cookies.get(ADMIN_SESSION_COOKIE)):
+        return
+    raise HTTPException(status_code=401, detail="Admin authentication required.")
+
+
+def require_admin_dashboard(request: Request) -> None:
+    _validate_admin_config()
     if request.query_params.get("public") == "1":
         return
-    _require_admin(credentials)
+    if _is_valid_session_cookie(request.cookies.get(ADMIN_SESSION_COOKIE)):
+        return
+    raise HTTPException(status_code=401, detail="Admin authentication required.")
+
+
+def _render_login_page(error: str = "", status_code: int = 200) -> HTMLResponse:
+    error_markup = f'<p style="color:#b42318;margin:0 0 12px 0;">{error}</p>' if error else ""
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Login</title>
+  </head>
+  <body style="font-family: sans-serif; background: #f6f7fb; margin: 0; padding: 32px;">
+    <main style="max-width: 360px; margin: 0 auto; background: #fff; border: 1px solid #d8dce6; border-radius: 8px; padding: 20px;">
+      <h1 style="margin: 0 0 10px 0; font-size: 22px;">Admin Login</h1>
+      <p style="margin: 0 0 16px 0; color: #475467;">Sign in to access the admin dashboard.</p>
+      {error_markup}
+      <form method="post" action="/login" style="display: grid; gap: 12px;">
+        <label style="display:grid; gap:6px;">
+          <span>Username</span>
+          <input type="text" name="username" required />
+        </label>
+        <label style="display:grid; gap:6px;">
+          <span>Password</span>
+          <input type="password" name="password" required />
+        </label>
+        <button type="submit">Sign in</button>
+      </form>
+    </main>
+  </body>
+</html>"""
+    return HTMLResponse(content=html, status_code=status_code)
+
+
+@router.get("/login", include_in_schema=False)
+def login_page(request: Request) -> Response:
+    if _is_admin_authenticated(request):
+        return RedirectResponse(url="/", status_code=303)
+    return _render_login_page()
+
+
+@router.post("/login", include_in_schema=False)
+async def login_submit(request: Request) -> Response:
+    body = (await request.body()).decode("utf-8", errors="ignore")
+    parsed = parse_qs(body)
+    username = (parsed.get("username") or [""])[0]
+    password = (parsed.get("password") or [""])[0]
+
+    try:
+        _validate_admin_config()
+    except HTTPException as exc:
+        return _render_login_page(error=exc.detail, status_code=500)
+
+    valid_username = secrets.compare_digest(username, settings.admin_username)
+    valid_password = secrets.compare_digest(password, settings.admin_password)
+    if not (valid_username and valid_password):
+        return _render_login_page(error="Invalid username or password.", status_code=401)
+
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie(
+        key=ADMIN_SESSION_COOKIE,
+        value=_build_session_cookie(username=settings.admin_username),
+        httponly=True,
+        samesite="lax",
+        max_age=ADMIN_SESSION_MAX_AGE_SECONDS,
+        path="/",
+    )
+    return response
+
+
+@router.post("/logout", include_in_schema=False)
+def logout() -> RedirectResponse:
+    response = RedirectResponse(url="/login", status_code=303)
+    response.delete_cookie(key=ADMIN_SESSION_COOKIE, path="/")
+    return response
 
 
 @router.get("/health")
@@ -99,9 +209,15 @@ def health() -> dict[str, object]:
 
 
 @router.get("/", include_in_schema=False)
-def dashboard(_: None = Depends(require_admin_dashboard)) -> FileResponse:
+def dashboard(request: Request) -> Response:
     """Serve the small demo dashboard."""
 
+    if request.query_params.get("public") == "1":
+        return FileResponse(STATIC_DIR / "dashboard.html")
+    try:
+        require_admin_dashboard(request)
+    except HTTPException:
+        return RedirectResponse(url="/login", status_code=303)
     return FileResponse(STATIC_DIR / "dashboard.html")
 
 
