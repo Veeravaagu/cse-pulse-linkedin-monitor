@@ -65,9 +65,7 @@ Implemented today:
 - optional Google Sheets sync path
 
 Not yet production-ready:
-- scheduled or automated ingestion
 - persistent database backend
-- persistent review workflow state
 - real LLM integration
 - deployment, auth, and operational hardening
 
@@ -77,9 +75,9 @@ Not yet production-ready:
 - service accounts can only read a real mailbox if your Google Workspace setup grants appropriate Gmail API access to that service account
 - the `llm` enrichment mode is a scaffold and raises until implemented
 - JSON storage is suitable for local use, not multi-user or hosted operation
-- dashboard review actions are frontend-only and do not persist to backend storage
+- dashboard review actions persist through the backend, but the app still relies on file-based JSON storage
 - Google Sheets sync is append-oriented and does not yet support deduplication or reconciliation
-- there is no authentication, authorization, or tenant separation
+- admin authentication and CSRF protection exist, but there is no multi-user authorization or tenant separation
 - observability is minimal compared with a production service
 
 ## Local Setup
@@ -156,7 +154,7 @@ Suggested demo actions:
 - filter the activity inbox
 - inspect the high-priority spotlight
 - switch among digest preview, JSON, and Markdown views
-- use frontend-only review actions to drive the mock sync status card
+- use the admin review actions to approve, reject, batch update, and delete activities
 
 ## Enabling Gmail Read-Only Ingestion
 
@@ -308,6 +306,8 @@ ADMIN_PASSWORD=<admin-password>
 ADMIN_SESSION_SECRET=<long-random-secret>
 MAIN_DASHBOARD_API_KEY=<long-random-api-key>
 DATA_FILE=<persistent-path>/activities.json
+INGESTION_STATE_FILE=<persistent-path>/ingestion_state.json
+PUBLIC_FETCH_MODE_FILE=<persistent-path>/public_fetch_mode.json
 INGESTION_MODE=<mock-or-gmail>
 GMAIL_CREDENTIALS_PATH=<optional-service-account-json-path>
 GMAIL_OAUTH_CLIENT_SECRET_PATH=<optional-oauth-client-secret-path>
@@ -320,6 +320,26 @@ Security notes:
 - Use a long random value for `MAIN_DASHBOARD_API_KEY`.
 - `/?public=1` is a read-only preview page.
 - Real downstream integration is `GET /activities/public` with `X-API-Key` in production.
+
+## Production (Render)
+
+Render start command:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+Persistence requirement:
+- The JSON runtime files must be stored on a persistent disk.
+- On Render, point the file env vars at your persistent disk mount instead of repo-local `data/*.json`.
+
+Example persistent-disk paths:
+
+```env
+DATA_FILE=/data/activities.json
+INGESTION_STATE_FILE=/data/ingestion_state.json
+PUBLIC_FETCH_MODE_FILE=/data/public_fetch_mode.json
+```
 
 ## Main Dashboard Integration Contract
 
