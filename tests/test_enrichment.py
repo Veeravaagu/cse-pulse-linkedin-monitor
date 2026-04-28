@@ -42,6 +42,86 @@ def test_parser_does_not_treat_research_matters_as_faculty_name() -> None:
     assert parsed.faculty_name is None
 
 
+def test_parser_cleans_forwarded_newsletter_subject_prefix() -> None:
+    parser = GmailParser()
+    raw = RawEmail(
+        subject="FW: Research Matters: Updates from Research, Innovation and Economic Development",
+        sender="news@buffalo.edu",
+        snippet="CSE Seminar: Trustworthy AI talk announced for Friday.",
+        body="",
+        received_at=datetime.now(timezone.utc),
+    )
+
+    parsed = parser.parse(raw)
+
+    first_line = parsed.raw_text.splitlines()[0]
+    assert first_line == "Research Matters: Updates from Research, Innovation and Economic Development"
+    assert not first_line.startswith(("FW:", "Fwd:", "RE:"))
+
+
+def test_ub_cse_newsletter_item_gets_readable_summary_and_headline() -> None:
+    processor = MockProcessor()
+    parsed = ParsedEmailActivity(
+        faculty_name=None,
+        source_type="ub_cse_email",
+        source_url="https://engineering.buffalo.edu/computer-science-engineering/news.html",
+        raw_text=(
+            "Research Matters: Updates from Research, Innovation and Economic Development\n"
+            "IN THIS ISSUE: Annual Research Report | Events | News\n"
+            "CSE Seminar: Trustworthy AI for autonomous systems\n"
+            "Professor Maya Lee will present a CSE seminar on trustworthy AI for autonomous systems this Friday."
+        ),
+        detected_at=datetime.now(timezone.utc),
+    )
+
+    enriched = processor.enrich(parsed)
+
+    assert parsed.faculty_name == "CSE Seminar: Trustworthy AI for autonomous systems"
+    assert enriched.category == ActivityCategory.talk_event
+    assert enriched.ai_summary == (
+        "CSE Seminar: Trustworthy AI for autonomous systems. "
+        "Professor Maya Lee will present a CSE seminar on trustworthy AI for autonomous systems this Friday."
+    )
+    assert "Research Matters" not in enriched.ai_summary
+
+
+def test_parser_extracts_obvious_person_from_newsletter_body() -> None:
+    parser = GmailParser()
+    raw = RawEmail(
+        subject="Research Matters: Faculty highlights",
+        sender="news@buffalo.edu",
+        snippet="Professor Maya Lee received an NSF grant for secure systems research.",
+        body="",
+        received_at=datetime.now(timezone.utc),
+    )
+
+    parsed = parser.parse(raw)
+
+    assert parsed.faculty_name == "Maya Lee"
+
+
+def test_newsletter_fallback_keeps_safe_generic_behavior() -> None:
+    processor = MockProcessor()
+    parsed = ParsedEmailActivity(
+        faculty_name=None,
+        source_type="ub_cse_email",
+        source_url=None,
+        raw_text=(
+            "Research Matters: Updates from Research, Innovation and Economic Development\n"
+            "IN THIS ISSUE: Annual Research Report | Resources | Events\n"
+            "University at Buffalo research newsletter for the campus community."
+        ),
+        detected_at=datetime.now(timezone.utc),
+    )
+
+    enriched = processor.enrich(parsed)
+
+    assert parsed.faculty_name is None
+    assert enriched.category == ActivityCategory.other
+    assert enriched.priority == 2
+    assert enriched.ai_summary == "University at Buffalo research newsletter for the campus community."
+
+
 def test_mock_processor_classifies_publication_and_preserves_schema() -> None:
     processor = MockProcessor()
     parser = GmailParser()

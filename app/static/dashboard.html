@@ -31,36 +31,6 @@
         </div>
       </header>
 
-      <section class="status-strip">
-        <p id="status-message" class="status-message status-neutral">Ready.</p>
-        <div id="sheets-status-card" class="sync-card">
-          <strong id="sync-state">Review queue</strong>
-          <span id="sync-message">Waiting for review actions.</span>
-          <span class="sync-metrics">
-            <b id="sync-rejected-count">0</b> rejected on page • <b id="sync-approved-count">0</b> approved on page
-          </span>
-        </div>
-      </section>
-
-      <section class="kpi-grid" aria-label="Key metrics">
-        <article class="kpi-card">
-          <span class="kpi-label">Matching Items</span>
-          <strong id="kpi-total" class="kpi-value">--</strong>
-        </article>
-        <article class="kpi-card">
-          <span class="kpi-label">Page Pending</span>
-          <strong id="kpi-pending" class="kpi-value">--</strong>
-        </article>
-        <article class="kpi-card">
-          <span class="kpi-label">Page High Priority</span>
-          <strong id="kpi-priority" class="kpi-value">--</strong>
-        </article>
-        <article class="kpi-card">
-          <span class="kpi-label">Digest Items</span>
-          <strong id="kpi-digest" class="kpi-value">--</strong>
-        </article>
-      </section>
-
       <main class="content-grid">
         <section id="inbox" class="panel panel-primary">
           <div class="panel-header">
@@ -68,7 +38,10 @@
               <p class="section-tag">Activity Inbox</p>
               <h2>Recent activity queue</h2>
             </div>
-            <p id="inbox-feedback" class="inline-feedback inline-feedback-hidden"></p>
+            <div class="panel-status">
+              <p id="status-message" class="status-message status-neutral">Ready.</p>
+              <p id="inbox-feedback" class="inline-feedback inline-feedback-hidden"></p>
+            </div>
           </div>
 
           <div class="filter-toolbar" aria-label="Inbox filters">
@@ -168,7 +141,6 @@
               <pre id="digest-markdown-content" class="digest-code empty-state">Loading digest markdown...</pre>
             </div>
 
-            <div id="digest-summary-cards" class="digest-summary-cards empty-state">Loading summary...</div>
           </section>
         </aside>
       </main>

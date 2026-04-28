@@ -323,71 +323,12 @@ function renderTimeline() {
   container.innerHTML = buildChartRows(rows, "timeline-bars");
 }
 
-function renderDigestSummary() {
-  const container = document.getElementById("digest-summary-cards");
-  if (!state.digest) {
-    container.className = "digest-summary-cards empty-state";
-    container.innerHTML = "Digest summary is not ready yet.";
-    return;
-  }
-
-  container.className = "digest-summary-cards";
-  container.innerHTML = `
-    <article class="digest-summary-card">
-      <span class="meta-line">Date range</span>
-      <strong class="digest-date-range">${state.digest.date_range.start_date} to ${state.digest.date_range.end_date}</strong>
-    </article>
-    <article class="digest-summary-card">
-      <span class="meta-line">Sections</span>
-      <strong>${state.digest.sections.length}</strong>
-      <span class="meta-line">grouped categories</span>
-    </article>
-    <article class="digest-summary-card">
-      <span class="meta-line">Digest items</span>
-      <strong>${state.digest.total_items}</strong>
-      <span class="meta-line">current preview window</span>
-    </article>
-  `;
-}
-
 function renderDigestWorkspace() {
   document.getElementById("digest-preview-content").textContent = state.digestPreview || "No preview available.";
   document.getElementById("digest-json-content").textContent = state.digest
     ? JSON.stringify(state.digest, null, 2)
     : "No JSON digest available.";
   document.getElementById("digest-markdown-content").textContent = state.digestMarkdown || "No markdown export available.";
-  renderDigestSummary();
-}
-
-function renderKpis() {
-  document.getElementById("kpi-total").textContent = String(state.pagination.total);
-  document.getElementById("kpi-pending").textContent = String(
-    state.activities.filter((item) => item.review_status === "pending").length,
-  );
-  document.getElementById("kpi-priority").textContent = String(state.highPriority.length);
-  document.getElementById("kpi-digest").textContent = String(state.digest?.total_items || 0);
-}
-
-function renderSyncCard() {
-  const rejected = state.activities.filter((item) => item.review_status === "rejected").length;
-  const approved = state.activities.filter((item) => item.review_status === "approved").length;
-
-  document.getElementById("sync-rejected-count").textContent = String(rejected);
-  document.getElementById("sync-approved-count").textContent = String(approved);
-
-  const stateNode = document.getElementById("sync-state");
-  const messageNode = document.getElementById("sync-message");
-
-  if (approved > 0) {
-    stateNode.textContent = "Ready to sync";
-    messageNode.textContent = "Approved items are visible on this page.";
-  } else if (rejected > 0) {
-    stateNode.textContent = "Review in progress";
-    messageNode.textContent = "Rejected items are visible on this page.";
-  } else {
-    stateNode.textContent = "Review queue";
-    messageNode.textContent = "Waiting for review actions on this page.";
-  }
 }
 
 function buildDigestQuery() {
@@ -479,7 +420,6 @@ async function loadActivityPage() {
   state.pagination.pageSize = page.limit;
   state.pagination.page = Math.floor(page.offset / page.limit) + 1;
   applyFiltersAndRender();
-  renderKpis();
 }
 
 function updateStatusTabs() {
@@ -561,7 +501,6 @@ async function handleReviewAction(activityId, nextState, button) {
     const updated = await fetchPayload(`/activities/${activityId}/${endpoint}`, { method: "POST" });
     state.activities = state.activities.map((activity) => (activity.id === updated.id ? updated : activity));
     await loadActivityPage();
-    renderSyncCard();
     setStatus(`Activity ${nextState}.`, "success");
   } catch (error) {
     button.disabled = false;
@@ -595,8 +534,6 @@ async function loadDashboard({ digestOnly = false } = {}) {
     state.digestMarkdown = markdown;
 
     renderDigestWorkspace();
-    renderKpis();
-    renderSyncCard();
     setInlineFeedback("digest-feedback", digest.sections.length ? "" : "Digest is empty for the current window.");
     setStatus(digestOnly ? "Digest refreshed." : "Dashboard is live.", "success");
   } catch (error) {
@@ -642,7 +579,6 @@ function applyFiltersFromInputs() {
   state.filters.search = document.getElementById("search-filter").value.trim();
   state.filters.category = document.getElementById("category-filter").value;
   applyFiltersAndRender();
-  renderKpis();
 }
 
 function clearFilters() {
@@ -651,7 +587,6 @@ function clearFilters() {
   state.filters.search = "";
   state.filters.category = "";
   applyFiltersAndRender();
-  renderKpis();
   setStatus("Filters cleared.", "success");
 }
 
