@@ -34,6 +34,12 @@ class ActivityStorage(Protocol):
     def update_review_status(self, record_id: str, review_status: ReviewStatus) -> ActivityRecord | None:
         """Persist a review status change, or return None if missing."""
 
+    def delete_rejected(self, record_id: str) -> bool:
+        """Delete a rejected activity, returning whether anything was removed."""
+
+    def delete_rejected_many(self, record_ids: list[str]) -> int:
+        """Delete rejected activities by ID, returning the number removed."""
+
     def list_high_priority(self, threshold: int = 4) -> list[ActivityRecord]:
         """Return activities whose priority is at or above the threshold."""
 

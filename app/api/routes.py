@@ -36,6 +36,10 @@ class BatchActivityReviewStatusPayload(BaseModel):
     review_status: Literal["approved", "rejected"]
 
 
+class BatchActivityDeletePayload(BaseModel):
+    ids: list[str]
+
+
 parser = GmailParser()
 storage: ActivityStorage = JSONStorageService(settings.data_file)
 ingestion_state = IngestionStateStore(settings.ingestion_state_file)
@@ -219,6 +223,11 @@ def batch_update_activity_review_status(payload: BatchActivityReviewStatusPayloa
     return {"updated_count": updated_count}
 
 
+@router.delete("/activities/batch")
+def batch_delete_rejected_activities(payload: BatchActivityDeletePayload) -> dict[str, int]:
+    return {"deleted_count": storage.delete_rejected_many(payload.ids)}
+
+
 @router.get("/activities/{activity_id}", response_model=ActivityRecord)
 def get_activity(activity_id: str) -> ActivityRecord:
     record = storage.get_by_id(activity_id)
@@ -236,6 +245,11 @@ def update_activity_review_status(
     if not record:
         raise HTTPException(status_code=404, detail="Activity not found")
     return record
+
+
+@router.delete("/activities/{activity_id}")
+def delete_rejected_activity(activity_id: str) -> dict[str, bool]:
+    return {"deleted": storage.delete_rejected(activity_id)}
 
 
 @router.post("/activities/{activity_id}/approve", response_model=ActivityRecord)

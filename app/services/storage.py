@@ -77,6 +77,24 @@ class JSONStorageService(ActivityStorage):
                 return updated
         return None
 
+    def delete_rejected(self, record_id: str) -> bool:
+        return self.delete_rejected_many([record_id]) == 1
+
+    def delete_rejected_many(self, record_ids: list[str]) -> int:
+        ids = set(record_ids)
+        records = self._read_records()
+        kept_records = [
+            record
+            for record in records
+            if not (record.id in ids and record.review_status == ReviewStatus.rejected)
+        ]
+        deleted_count = len(records) - len(kept_records)
+
+        if deleted_count:
+            self._write_records(kept_records)
+
+        return deleted_count
+
     def list_high_priority(self, threshold: int = 4) -> list[ActivityRecord]:
         records = [item for item in self._read_records() if item.priority >= threshold]
         return self._sort_records(records, sort_by="priority", sort_order="desc")

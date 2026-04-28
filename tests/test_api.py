@@ -872,6 +872,135 @@ def test_batch_update_ignores_nonexistent_ids(tmp_path) -> None:
         routes.storage = original_storage
 
 
+def test_delete_rejected_activity_removes_it(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    _seed_activity_file(str(data_file))
+    storage = JSONStorageService(str(data_file))
+    storage.update_review_status("activity-3", ReviewStatus.rejected)
+    original_storage = routes.storage
+    routes.storage = storage
+
+    try:
+        client = TestClient(app)
+        response = client.delete("/activities/activity-3")
+
+        assert response.status_code == 200
+        assert response.json() == {"deleted": True}
+        assert client.get("/activities/activity-3").status_code == 404
+    finally:
+        routes.storage = original_storage
+
+
+def test_delete_approved_activity_does_not_remove_it(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    _seed_activity_file(str(data_file))
+    storage = JSONStorageService(str(data_file))
+    storage.update_review_status("activity-1", ReviewStatus.approved)
+    original_storage = routes.storage
+    routes.storage = storage
+
+    try:
+        client = TestClient(app)
+        response = client.delete("/activities/activity-1")
+
+        assert response.status_code == 200
+        assert response.json() == {"deleted": False}
+        assert client.get("/activities/activity-1").status_code == 200
+    finally:
+        routes.storage = original_storage
+
+
+def test_delete_pending_activity_does_not_remove_it(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    _seed_activity_file(str(data_file))
+    original_storage = routes.storage
+    routes.storage = JSONStorageService(str(data_file))
+
+    try:
+        client = TestClient(app)
+        response = client.delete("/activities/activity-1")
+
+        assert response.status_code == 200
+        assert response.json() == {"deleted": False}
+        assert client.get("/activities/activity-1").status_code == 200
+    finally:
+        routes.storage = original_storage
+
+
+def test_batch_delete_removes_multiple_rejected_items(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    _seed_activity_file(str(data_file))
+    storage = JSONStorageService(str(data_file))
+    storage.update_review_status("activity-1", ReviewStatus.rejected)
+    storage.update_review_status("activity-3", ReviewStatus.rejected)
+    original_storage = routes.storage
+    routes.storage = storage
+
+    try:
+        client = TestClient(app)
+        response = client.request(
+            "DELETE",
+            "/activities/batch",
+            json={"ids": ["activity-1", "activity-3"]},
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"deleted_count": 2}
+        assert client.get("/activities/activity-1").status_code == 404
+        assert client.get("/activities/activity-3").status_code == 404
+    finally:
+        routes.storage = original_storage
+
+
+def test_batch_delete_ignores_nonexistent_ids(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    _seed_activity_file(str(data_file))
+    storage = JSONStorageService(str(data_file))
+    storage.update_review_status("activity-3", ReviewStatus.rejected)
+    original_storage = routes.storage
+    routes.storage = storage
+
+    try:
+        client = TestClient(app)
+        response = client.request(
+            "DELETE",
+            "/activities/batch",
+            json={"ids": ["activity-3", "missing-activity"]},
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"deleted_count": 1}
+        assert client.get("/activities/activity-3").status_code == 404
+    finally:
+        routes.storage = original_storage
+
+
+def test_batch_delete_ignores_approved_and_pending_items(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    _seed_activity_file(str(data_file))
+    storage = JSONStorageService(str(data_file))
+    storage.update_review_status("activity-2", ReviewStatus.approved)
+    storage.update_review_status("activity-3", ReviewStatus.rejected)
+    original_storage = routes.storage
+    routes.storage = storage
+
+    try:
+        client = TestClient(app)
+        response = client.request(
+            "DELETE",
+            "/activities/batch",
+            json={"ids": ["activity-1", "activity-2", "activity-3"]},
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"deleted_count": 1}
+        assert client.get("/activities/activity-1").status_code == 200
+        assert client.get("/activities/activity-2").status_code == 200
+        assert client.get("/activities/activity-3").status_code == 404
+    finally:
+        routes.storage = original_storage
+
+
 def test_approved_activity_no_longer_appears_pending(tmp_path) -> None:
     data_file = tmp_path / "activities.json"
     _seed_activity_file(str(data_file))
