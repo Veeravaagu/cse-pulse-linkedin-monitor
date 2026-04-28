@@ -4,6 +4,7 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, PlainTextResponse
+from pydantic import BaseModel
 
 from app.config import settings
 from app.models.schemas import ActivityCategory, ActivityRecord, IngestResponse, ReviewStatus
@@ -13,6 +14,7 @@ from app.services.gmail_parser import GmailParser
 from app.services.ingestion import build_ingestion_adapter
 from app.services.ingestion.gmail_api_adapter import is_likely_linkedin_email, is_likely_ub_cse_activity_email
 from app.services.ingestion_state import IngestionStateStore
+from app.services.public_fetch_mode import PublicFetchMode, PublicFetchModeStore
 from app.services.sheets_client import GoogleSheetsClient
 from app.services.storage import JSONStorageService
 from app.services.storage_base import ActivityStorage
@@ -20,9 +22,14 @@ from app.services.storage_base import ActivityStorage
 router = APIRouter()
 STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 
+
+class PublicFetchModePayload(BaseModel):
+    mode: PublicFetchMode
+
 parser = GmailParser()
 storage: ActivityStorage = JSONStorageService(settings.data_file)
 ingestion_state = IngestionStateStore(settings.ingestion_state_file)
+public_fetch_mode_store = PublicFetchModeStore(settings.public_fetch_mode_file)
 sheets = GoogleSheetsClient(
     settings.google_sheets_id,
     settings.google_sheets_worksheet,
@@ -164,6 +171,30 @@ def high_priority() -> list[ActivityRecord]:
 @router.get("/activities/approved", response_model=list[ActivityRecord])
 def list_approved_activities() -> list[ActivityRecord]:
     return storage.list_activities(review_status=ReviewStatus.approved)
+
+
+@router.get("/activities/public", response_model=list[ActivityRecord])
+def list_public_activities() -> list[ActivityRecord]:
+    mode = public_fetch_mode_store.get_mode()
+    allowed_statuses = {ReviewStatus.approved}
+    if mode == "auto":
+        allowed_statuses.add(ReviewStatus.pending)
+
+    return [
+        item
+        for item in storage.list_activities(sort_by="detected_at", sort_order="desc")
+        if item.review_status in allowed_statuses
+    ]
+
+
+@router.get("/activities/public/mode")
+def get_public_fetch_mode() -> dict[str, PublicFetchMode]:
+    return {"mode": public_fetch_mode_store.get_mode()}
+
+
+@router.put("/activities/public/mode")
+def update_public_fetch_mode(payload: PublicFetchModePayload) -> dict[str, PublicFetchMode]:
+    return {"mode": public_fetch_mode_store.set_mode(payload.mode)}
 
 
 @router.get("/activities/{activity_id}", response_model=ActivityRecord)

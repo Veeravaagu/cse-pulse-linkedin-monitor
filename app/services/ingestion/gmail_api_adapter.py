@@ -28,7 +28,11 @@ UB_CSE_INSTITUTION_MARKERS = (
     "university at buffalo",
     "ub cse",
     "department of computer science and engineering",
+    "computer science and engineering",
     "school of engineering and applied sciences",
+    "engineering.buffalo.edu",
+    "cse.buffalo.edu",
+    "doermann@buffalo.edu",
     "buffalo.edu",
 )
 UB_CSE_ACTIVITY_MARKERS = (
@@ -76,9 +80,7 @@ def is_relevant_activity_email(raw_email: RawEmail) -> bool:
 
 def is_likely_ub_cse_activity_email(raw_email: RawEmail) -> bool:
     text = " ".join([raw_email.sender, raw_email.subject, raw_email.body]).lower()
-    has_institution_marker = any(marker in text for marker in UB_CSE_INSTITUTION_MARKERS)
-    has_activity_marker = any(marker in text for marker in UB_CSE_ACTIVITY_MARKERS)
-    return has_institution_marker and has_activity_marker
+    return any(marker in text for marker in UB_CSE_INSTITUTION_MARKERS)
 
 
 class GmailAPIIngestionAdapter:

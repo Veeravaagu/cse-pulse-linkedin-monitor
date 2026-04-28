@@ -13,6 +13,7 @@ class Settings(BaseSettings):
 
     data_file: str = "data/activities.json"
     ingestion_state_file: str = "data/ingestion_state.json"
+    public_fetch_mode_file: str = "data/public_fetch_mode.json"
 
     # Enrichment mode: "mock" keeps rule-based logic, "llm" is a future scaffold.
     ai_provider: str = "mock"

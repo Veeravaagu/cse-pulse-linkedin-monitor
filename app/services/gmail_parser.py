@@ -6,6 +6,23 @@ from app.models.schemas import ParsedEmailActivity, RawEmail
 URL_PATTERN = re.compile(r"https?://[^\s<>\"']+")
 NAME_PATTERN = re.compile(r"(?:Dr|Prof|Professor)\.?\s+([A-Z][a-z]+\s[A-Z][a-z]+)|([A-Z][a-z]+\s[A-Z][a-z]+)")
 FORWARD_PREFIX_PATTERN = re.compile(r"^(?:(?:fw|fwd|re):\s*)+", re.IGNORECASE)
+PREFERRED_URL_MARKERS = (
+    "engineering.buffalo.edu",
+    "latest_news",
+    "news-events",
+    "detail.html",
+    "/news.html",
+)
+DEPRIORITIZED_URL_MARKERS = (
+    "cse.buffalo.edu/~doermann",
+    "forms.office.com",
+    "bookwithme",
+    "outlook.office.com",
+    "unsubscribe",
+    "mailchi.mp",
+    "mailchimp.com",
+    "view-in-browser",
+)
 NON_PERSON_TITLES = {
     "Annual Research",
     "Buffalo Department",
@@ -40,8 +57,24 @@ class GmailParser:
 
     @staticmethod
     def _extract_url(text: str) -> str | None:
-        match = URL_PATTERN.search(text)
-        return match.group(0) if match else None
+        urls = URL_PATTERN.findall(text)
+        if not urls:
+            return None
+        return max(enumerate(urls), key=lambda item: (GmailParser._score_url(item[1]), -item[0]))[1]
+
+    @staticmethod
+    def _score_url(url: str) -> int:
+        lowered = url.lower().rstrip(".,);]")
+        score = 0
+        if "buffalo.edu" in lowered:
+            score += 2
+        if "cse.buffalo.edu" in lowered and "/~doermann" not in lowered:
+            score += 2
+        if any(marker in lowered for marker in PREFERRED_URL_MARKERS):
+            score += 4
+        if any(marker in lowered for marker in DEPRIORITIZED_URL_MARKERS):
+            score -= 6
+        return score
 
     @staticmethod
     def _extract_faculty_name(text: str) -> str | None:

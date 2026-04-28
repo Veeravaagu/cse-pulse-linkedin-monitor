@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.api import routes
 from app.main import app
 from app.models.schemas import ActivityCategory, RawEmail, ReviewStatus
+from app.services.public_fetch_mode import PublicFetchModeStore
 from app.services.storage import JSONStorageService
 
 
@@ -97,6 +98,58 @@ def _seed_dashboard_window_activity_file(file_path: str) -> None:
     ]
     with open(file_path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
+
+
+def _seed_public_activity_file(file_path: str) -> None:
+    now = datetime.now(timezone.utc)
+    payload = [
+        {
+            "id": "public-pending",
+            "faculty_name": "Pending Activity",
+            "source_type": "ub_cse_email",
+            "source_url": "https://engineering.buffalo.edu/pending",
+            "raw_text": "Pending activity.",
+            "ai_summary": "Pending activity.",
+            "category": ActivityCategory.department_news.value,
+            "priority": 3,
+            "detected_at": now.isoformat(),
+            "review_status": ReviewStatus.pending.value,
+        },
+        {
+            "id": "public-approved",
+            "faculty_name": "Approved Activity",
+            "source_type": "ub_cse_email",
+            "source_url": "https://engineering.buffalo.edu/approved",
+            "raw_text": "Approved activity.",
+            "ai_summary": "Approved activity.",
+            "category": ActivityCategory.award.value,
+            "priority": 5,
+            "detected_at": (now - timedelta(days=1)).isoformat(),
+            "review_status": ReviewStatus.approved.value,
+        },
+        {
+            "id": "public-rejected",
+            "faculty_name": "Rejected Activity",
+            "source_type": "ub_cse_email",
+            "source_url": "https://engineering.buffalo.edu/rejected",
+            "raw_text": "Rejected activity.",
+            "ai_summary": "Rejected activity.",
+            "category": ActivityCategory.other.value,
+            "priority": 2,
+            "detected_at": (now - timedelta(days=2)).isoformat(),
+            "review_status": ReviewStatus.rejected.value,
+        },
+    ]
+    with open(file_path, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2)
+
+
+def _configure_public_activity_test(data_file: Path, mode_file: Path) -> tuple[object, object]:
+    original_storage = routes.storage
+    original_mode_store = routes.public_fetch_mode_store
+    routes.storage = JSONStorageService(str(data_file))
+    routes.public_fetch_mode_store = PublicFetchModeStore(str(mode_file))
+    return original_storage, original_mode_store
 
 
 def test_health_reports_storage_status_and_activity_count(tmp_path) -> None:
@@ -725,6 +778,64 @@ def test_list_approved_activities_endpoint_excludes_pending_and_rejected(tmp_pat
         assert all(item["review_status"] == ReviewStatus.approved.value for item in payload)
     finally:
         routes.storage = original_storage
+
+
+def test_public_activities_returns_approved_only_in_manual_mode(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    mode_file = tmp_path / "public_fetch_mode.json"
+    _seed_public_activity_file(str(data_file))
+    original_storage, original_mode_store = _configure_public_activity_test(data_file, mode_file)
+
+    try:
+        client = TestClient(app)
+        mode_response = client.put("/activities/public/mode", json={"mode": "manual"})
+        response = client.get("/activities/public")
+
+        assert mode_response.status_code == 200
+        assert mode_response.json() == {"mode": "manual"}
+        assert response.status_code == 200
+        assert [item["id"] for item in response.json()] == ["public-approved"]
+    finally:
+        routes.storage = original_storage
+        routes.public_fetch_mode_store = original_mode_store
+
+
+def test_public_activities_returns_approved_and_pending_in_auto_mode(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    mode_file = tmp_path / "public_fetch_mode.json"
+    _seed_public_activity_file(str(data_file))
+    original_storage, original_mode_store = _configure_public_activity_test(data_file, mode_file)
+
+    try:
+        client = TestClient(app)
+        mode_response = client.put("/activities/public/mode", json={"mode": "auto"})
+        response = client.get("/activities/public")
+
+        assert mode_response.status_code == 200
+        assert mode_response.json() == {"mode": "auto"}
+        assert response.status_code == 200
+        assert [item["id"] for item in response.json()] == ["public-pending", "public-approved"]
+    finally:
+        routes.storage = original_storage
+        routes.public_fetch_mode_store = original_mode_store
+
+
+def test_public_activities_never_returns_rejected_items(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    mode_file = tmp_path / "public_fetch_mode.json"
+    _seed_public_activity_file(str(data_file))
+    original_storage, original_mode_store = _configure_public_activity_test(data_file, mode_file)
+
+    try:
+        client = TestClient(app)
+        client.put("/activities/public/mode", json={"mode": "auto"})
+        payload = client.get("/activities/public").json()
+
+        assert "public-rejected" not in [item["id"] for item in payload]
+        assert all(item["review_status"] != ReviewStatus.rejected.value for item in payload)
+    finally:
+        routes.storage = original_storage
+        routes.public_fetch_mode_store = original_mode_store
 
 
 def test_digest_preview_returns_plain_text_digest(tmp_path) -> None:

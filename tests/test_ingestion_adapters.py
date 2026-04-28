@@ -270,6 +270,45 @@ def test_ub_cse_research_email_passes_relevance_filter() -> None:
     assert is_likely_ub_cse_activity_email(raw_email) is True
 
 
+def test_forwarded_doermann_ub_engineering_news_link_passes_relevance_filter() -> None:
+    raw_email = RawEmail(
+        subject="FW: UB Engineering link",
+        sender="David Doermann <doermann@buffalo.edu>",
+        snippet="Forwarded UB Engineering link",
+        body="https://engineering.buffalo.edu/news/latest.html",
+        received_at=datetime.now(timezone.utc),
+    )
+
+    assert is_likely_linkedin_email(raw_email) is False
+    assert is_likely_ub_cse_activity_email(raw_email) is True
+
+
+def test_ub_cse_faculty_news_page_passes_relevance_filter_without_activity_marker() -> None:
+    raw_email = RawEmail(
+        subject="Profile page",
+        sender="updates@buffalo.edu",
+        snippet="Wenyao Xu news page",
+        body="https://cse.buffalo.edu/~wenyaoxu/news.html",
+        received_at=datetime.now(timezone.utc),
+    )
+
+    assert is_likely_linkedin_email(raw_email) is False
+    assert is_likely_ub_cse_activity_email(raw_email) is True
+
+
+def test_generic_non_ub_newsletter_still_fails_ub_cse_relevance_filter() -> None:
+    raw_email = RawEmail(
+        subject="Weekly research newsletter",
+        sender="newsletter@example.edu",
+        snippet="Campus updates and opportunities",
+        body="This newsletter includes seminars, awards, grants, and publications from several universities.",
+        received_at=datetime.now(timezone.utc),
+    )
+
+    assert is_likely_linkedin_email(raw_email) is False
+    assert is_likely_ub_cse_activity_email(raw_email) is False
+
+
 def test_linkedin_news_email_is_not_faculty_activity() -> None:
     raw_email = RawEmail(
         subject="LinkedIn News: Airlines face delays",

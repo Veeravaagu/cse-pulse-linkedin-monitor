@@ -38,7 +38,18 @@ body,
 .side-column,
 .panel,
 .filter-toolbar,
-.digest-date-controls {
+.digest-date-controls,
+.inbox-list,
+.spotlight-list,
+.charts-grid,
+.timeline-chart,
+.inbox-item,
+.spotlight-card,
+.chart-card {
+  min-width: 0;
+}
+
+.page-shell * {
   min-width: 0;
 }
 
@@ -110,6 +121,20 @@ select {
 .field span,
 .meta-line {
   color: var(--muted);
+}
+
+.topbar-summary,
+.status-message,
+.inline-feedback,
+.meta-line,
+.item-title,
+.item-summary,
+.spotlight-summary,
+.spotlight-card h4,
+.chart-card h4,
+.detail-box {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .topbar-actions {
@@ -340,6 +365,7 @@ select {
   border-radius: 1.125rem;
   padding: var(--space-sm);
   background: #fff;
+  max-width: 100%;
 }
 
 .inbox-item {
@@ -355,6 +381,8 @@ select {
   flex-wrap: wrap;
   gap: var(--space-xs);
   align-items: center;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .item-title,
@@ -369,6 +397,8 @@ select {
 .chart-card h4 {
   font-size: clamp(0.95rem, 0.88rem + 0.24vw, 1.08rem);
   line-height: 1.2;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .item-title {
@@ -393,20 +423,25 @@ select {
 .spotlight-summary {
   margin: var(--space-xs) 0;
   line-height: 1.45;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .item-summary {
   font-size: clamp(0.86rem, 0.82rem + 0.18vw, 0.96rem);
   line-height: 1.38;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  max-height: 4.2em;
   overflow: hidden;
 }
 
 .inbox-item .meta-line {
   font-size: clamp(0.78rem, 0.74rem + 0.18vw, 0.9rem);
   line-height: 1.3;
+}
+
+.spotlight-card .meta-line,
+.chart-card .meta-line {
+  max-width: 100%;
 }
 
 .pill {

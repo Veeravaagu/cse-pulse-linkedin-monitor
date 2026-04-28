@@ -24,6 +24,86 @@ def test_parser_extracts_url_and_name() -> None:
     assert parsed.faculty_name == "Alice Johnson"
 
 
+def test_parser_prefers_ub_engineering_article_over_doermann_signature_url() -> None:
+    parser = GmailParser()
+    raw = RawEmail(
+        subject="FW: UB Engineering article",
+        sender="David Doermann <doermann@buffalo.edu>",
+        snippet="Forwarded news item",
+        body=(
+            "David Doermann\n"
+            "website: http://cse.buffalo.edu/~doermann\n"
+            "Read the article: https://engineering.buffalo.edu/news/latest_news.host.html/content/shared/engineering/home/articles/2026/cse-research.detail.html"
+        ),
+        received_at=datetime.now(timezone.utc),
+    )
+
+    parsed = parser.parse(raw)
+
+    assert (
+        parsed.source_url
+        == "https://engineering.buffalo.edu/news/latest_news.host.html/content/shared/engineering/home/articles/2026/cse-research.detail.html"
+    )
+
+
+def test_parser_prefers_cse_news_page_over_doermann_signature_url() -> None:
+    parser = GmailParser()
+    raw = RawEmail(
+        subject="FW: Faculty news",
+        sender="David Doermann <doermann@buffalo.edu>",
+        snippet="Forwarded CSE item",
+        body=(
+            "website: http://cse.buffalo.edu/~doermann\n"
+            "Related news: https://cse.buffalo.edu/~wenyaoxu/news.html"
+        ),
+        received_at=datetime.now(timezone.utc),
+    )
+
+    parsed = parser.parse(raw)
+
+    assert parsed.source_url == "https://cse.buffalo.edu/~wenyaoxu/news.html"
+
+
+def test_parser_still_extracts_single_meaningful_url() -> None:
+    parser = GmailParser()
+    raw = RawEmail(
+        subject="UB CSE article",
+        sender="news@buffalo.edu",
+        snippet="Article link",
+        body="Read more: https://engineering.buffalo.edu/news-events/news.host.html/content/shared/engineering/home/articles/2026/example.detail.html",
+        received_at=datetime.now(timezone.utc),
+    )
+
+    parsed = parser.parse(raw)
+
+    assert (
+        parsed.source_url
+        == "https://engineering.buffalo.edu/news-events/news.host.html/content/shared/engineering/home/articles/2026/example.detail.html"
+    )
+
+
+def test_parser_does_not_choose_footer_url_over_activity_url() -> None:
+    parser = GmailParser()
+    raw = RawEmail(
+        subject="Research update",
+        sender="news@buffalo.edu",
+        snippet="View in browser link appears before article",
+        body=(
+            "View in browser: https://mailchi.mp/example/research-matters\n"
+            "Main story: https://engineering.buffalo.edu/news-events/news.host.html/content/shared/engineering/home/articles/2026/grant-award.detail.html\n"
+            "Unsubscribe: https://mailchimp.com/unsubscribe/example"
+        ),
+        received_at=datetime.now(timezone.utc),
+    )
+
+    parsed = parser.parse(raw)
+
+    assert (
+        parsed.source_url
+        == "https://engineering.buffalo.edu/news-events/news.host.html/content/shared/engineering/home/articles/2026/grant-award.detail.html"
+    )
+
+
 def test_parser_does_not_treat_research_matters_as_faculty_name() -> None:
     parser = GmailParser()
     raw = RawEmail(
