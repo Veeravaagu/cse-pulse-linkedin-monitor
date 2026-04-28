@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     data_file: str = "data/activities.json"
+    ingestion_state_file: str = "data/ingestion_state.json"
 
     # Enrichment mode: "mock" keeps rule-based logic, "llm" is a future scaffold.
     ai_provider: str = "mock"
@@ -28,6 +29,9 @@ class Settings(BaseSettings):
 
     gmail_query: str = "from:linkedin.com"
     gmail_max_results: int = 25
+    gmail_credentials_path: str = ""
+    gmail_oauth_client_secret_path: str = ""
+    gmail_token_path: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

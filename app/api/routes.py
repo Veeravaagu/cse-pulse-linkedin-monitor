@@ -1,5 +1,5 @@
 from pathlib import Path
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
@@ -11,6 +11,8 @@ from app.services.digest_service import DigestService
 from app.services.enrichment import build_enrichment_processor
 from app.services.gmail_parser import GmailParser
 from app.services.ingestion import build_ingestion_adapter
+from app.services.ingestion.gmail_api_adapter import is_likely_linkedin_email, is_likely_ub_cse_activity_email
+from app.services.ingestion_state import IngestionStateStore
 from app.services.sheets_client import GoogleSheetsClient
 from app.services.storage import JSONStorageService
 from app.services.storage_base import ActivityStorage
@@ -20,6 +22,7 @@ STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 
 parser = GmailParser()
 storage: ActivityStorage = JSONStorageService(settings.data_file)
+ingestion_state = IngestionStateStore(settings.ingestion_state_file)
 sheets = GoogleSheetsClient(
     settings.google_sheets_id,
     settings.google_sheets_worksheet,
@@ -29,8 +32,14 @@ sheets = GoogleSheetsClient(
 
 
 @router.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "service": settings.app_name}
+def health() -> dict[str, object]:
+    activities = storage.list_all()
+    return {
+        "status": "ok",
+        "service": settings.app_name,
+        "storage": "ok",
+        "activity_count": len(activities),
+    }
 
 
 @router.get("/", include_in_schema=False)
@@ -112,9 +121,49 @@ def list_activities(
     )
 
 
+@router.get("/activities/page")
+def list_activity_page(
+    category: ActivityCategory | None = None,
+    review_status: ReviewStatus | None = None,
+    sort_by: Literal["detected_at", "priority"] = "detected_at",
+    sort_order: Literal["asc", "desc"] = "desc",
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=25, ge=1),
+    days: int | None = Query(default=None, ge=1),
+) -> dict[str, object]:
+    filtered = storage.list_activities(
+        category=category,
+        review_status=review_status,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        days=days,
+    )
+    items = storage.list_activities(
+        category=category,
+        review_status=review_status,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        offset=offset,
+        limit=limit,
+        days=days,
+    )
+
+    return {
+        "items": items,
+        "total": len(filtered),
+        "limit": limit,
+        "offset": offset,
+    }
+
+
 @router.get("/activities/high-priority", response_model=list[ActivityRecord])
 def high_priority() -> list[ActivityRecord]:
     return storage.list_high_priority(threshold=4)
+
+
+@router.get("/activities/approved", response_model=list[ActivityRecord])
+def list_approved_activities() -> list[ActivityRecord]:
+    return storage.list_activities(review_status=ReviewStatus.approved)
 
 
 @router.get("/activities/{activity_id}", response_model=ActivityRecord)
@@ -125,8 +174,24 @@ def get_activity(activity_id: str) -> ActivityRecord:
     return record
 
 
+@router.post("/activities/{activity_id}/approve", response_model=ActivityRecord)
+def approve_activity(activity_id: str) -> ActivityRecord:
+    record = storage.update_review_status(activity_id, ReviewStatus.approved)
+    if not record:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    return record
+
+
+@router.post("/activities/{activity_id}/reject", response_model=ActivityRecord)
+def reject_activity(activity_id: str) -> ActivityRecord:
+    record = storage.update_review_status(activity_id, ReviewStatus.rejected)
+    if not record:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    return record
+
+
 def _run_ingestion(mode: str | None = None) -> IngestResponse:
-    """Shared ingestion flow for mock and future Gmail mode.
+    """Shared ingestion flow for the selected adapter mode.
 
     Beginner note:
     1) adapter fetches raw emails
@@ -135,13 +200,24 @@ def _run_ingestion(mode: str | None = None) -> IngestResponse:
     4) storage persists final rows
     """
 
-    adapter = build_ingestion_adapter(mode)
+    selected_mode = (mode or settings.ingestion_mode).strip().lower()
+    received_after = (
+        ingestion_state.get_last_successful_ingestion_at()
+        if selected_mode == "gmail"
+        else None
+    )
+    adapter = build_ingestion_adapter(mode, received_after=received_after)
     enrichment_processor = build_enrichment_processor()
     raw_emails = adapter.fetch_emails()
     created: list[ActivityRecord] = []
 
     for raw in raw_emails:
         parsed = parser.parse(raw)
+        if is_likely_ub_cse_activity_email(raw) and not is_likely_linkedin_email(raw):
+            parsed.source_type = "ub_cse_email"
+        if parsed.source_url and storage.exists_by_source_url(parsed.source_url):
+            continue
+
         enriched = enrichment_processor.enrich(parsed)
         record = storage.create(parsed, enriched)
         created.append(record)
@@ -149,14 +225,12 @@ def _run_ingestion(mode: str | None = None) -> IngestResponse:
     if created:
         sheets.append_rows(created)
 
-    return IngestResponse(ingested_count=len(created), activities=created)
+    result = IngestResponse(ingested_count=len(created), activities=created)
+    if selected_mode == "gmail" and getattr(adapter, "last_fetch_succeeded", True):
+        ingestion_state.set_last_successful_ingestion_at(datetime.now(timezone.utc))
+    return result
 
 
 @router.post("/ingest", response_model=IngestResponse)
 def ingest_emails() -> IngestResponse:
-    return _run_ingestion(mode=settings.ingestion_mode)
-
-
-@router.post("/ingest/mock", response_model=IngestResponse)
-def ingest_mock_emails() -> IngestResponse:
-    return _run_ingestion(mode="mock")
+    return _run_ingestion(mode="gmail")

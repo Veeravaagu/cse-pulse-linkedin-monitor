@@ -9,13 +9,17 @@ const state = {
   filters: {
     search: "",
     category: "",
-    reviewStatus: "",
+    reviewStatus: "pending",
   },
-  reviewActions: JSON.parse(window.localStorage.getItem("csePulseReviewActions") || "{}"),
   digestTab: "preview",
   pagination: {
     page: 1,
-    pageSize: 10,
+    pageSize: 25,
+    total: 0,
+  },
+  digestWindow: {
+    startDate: "",
+    endDate: "",
   },
 };
 
@@ -32,12 +36,22 @@ async function fetchPayload(url, options = {}) {
   return response.text();
 }
 
-function persistReviewActions() {
-  window.localStorage.setItem("csePulseReviewActions", JSON.stringify(state.reviewActions));
-}
-
 function safeText(value) {
   return value ?? "";
+}
+
+function formatDateInput(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function defaultDigestWindow() {
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(start.getDate() - 7);
+  return {
+    startDate: formatDateInput(start),
+    endDate: formatDateInput(end),
+  };
 }
 
 function priorityClass(priority) {
@@ -68,11 +82,11 @@ function createBadge(label, className = "") {
 }
 
 function deriveReviewLabel(activity) {
-  return state.reviewActions[activity.id] || activity.review_status || "pending";
+  return activity.review_status || "pending";
 }
 
 function formatReviewLabel(label) {
-  return label === "not reviewed" ? "pending" : label;
+  return label;
 }
 
 function createReviewBadge(activity) {
@@ -86,6 +100,8 @@ function activitySearchBlob(activity) {
     activity.category,
     activity.raw_text,
     activity.review_status,
+    activity.source_type,
+    activity.source_url,
   ]
     .join(" ")
     .toLowerCase();
@@ -107,12 +123,12 @@ function filterActivities(activities) {
 }
 
 function getPaginationMeta() {
-  const totalItems = state.filteredActivities.length;
+  const totalItems = state.pagination.total;
   const pageSize = state.pagination.pageSize;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const currentPage = Math.min(state.pagination.page, totalPages);
   const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const endIndex = Math.min(startIndex + state.filteredActivities.length, totalItems);
 
   return {
     totalItems,
@@ -126,17 +142,26 @@ function getPaginationMeta() {
 function updatePaginatedActivities() {
   const meta = getPaginationMeta();
   state.pagination.page = meta.currentPage;
-  state.paginatedActivities = state.filteredActivities.slice(meta.startIndex, meta.endIndex);
+  state.paginatedActivities = state.filteredActivities;
 }
 
 function createActivityCard(activity) {
-  const facultyName = safeText(activity.faculty_name) || "Unknown faculty";
+  const activityLabel = safeText(activity.faculty_name) || "General CSE activity";
   const summary = safeText(activity.ai_summary);
+  const reviewControls =
+    activity.review_status === "pending"
+      ? `
+        <div class="review-actions">
+          <button class="review-button review-approve" type="button" data-review-action="approved" data-activity-id="${activity.id}">Approve</button>
+          <button class="review-button review-reject" type="button" data-review-action="rejected" data-activity-id="${activity.id}">Reject</button>
+        </div>
+      `
+      : "";
 
   return `
     <article class="inbox-item" data-activity-id="${activity.id}">
       <div class="inbox-item-header">
-        <h3 class="item-title" title="${facultyName}">${facultyName}</h3>
+        <h3 class="item-title" title="${activityLabel}">${activityLabel}</h3>
       </div>
       <div class="item-badges">
         ${createBadge(activity.category)}
@@ -145,11 +170,7 @@ function createActivityCard(activity) {
       </div>
       <p class="item-summary" title="${summary}">${summary}</p>
       <div class="meta-line">Detected ${activity.detected_at.slice(0, 10)} • Source ${activity.source_type}</div>
-      <div class="review-actions">
-        <button class="review-button review-approve" type="button" data-review-action="approved" data-activity-id="${activity.id}">Approve</button>
-        <button class="review-button review-reject" type="button" data-review-action="rejected" data-activity-id="${activity.id}">Reject</button>
-        <button class="review-button review-mark" type="button" data-review-action="reviewed" data-activity-id="${activity.id}">Mark reviewed</button>
-      </div>
+      ${reviewControls}
     </article>
   `;
 }
@@ -162,17 +183,13 @@ function renderPagination() {
   const meta = getPaginationMeta();
 
   summary.textContent = meta.totalItems === 0
-    ? "Showing 0-0 of 0"
-    : `Showing ${meta.startIndex + 1}-${meta.endIndex} of ${meta.totalItems}`;
+    ? "Showing 0-0 of 0 recent matches"
+    : `Showing ${meta.startIndex + 1}-${meta.endIndex} of ${meta.totalItems} recent matches`;
 
   prevButton.disabled = meta.currentPage <= 1;
   nextButton.disabled = meta.currentPage >= meta.totalPages || meta.totalItems === 0;
 
-  pagesContainer.innerHTML = Array.from({ length: meta.totalPages }, (_, index) => {
-    const page = index + 1;
-    const activeClass = page === meta.currentPage ? "is-active" : "";
-    return `<button class="page-number ${activeClass}" type="button" data-page-number="${page}">${page}</button>`;
-  }).join("");
+  pagesContainer.textContent = `Page ${meta.currentPage} of ${meta.totalPages}`;
 }
 
 function renderInbox() {
@@ -205,7 +222,7 @@ function renderSpotlight() {
       (item) => `
         <article class="spotlight-card" data-activity-id="${item.id}">
           <div class="spotlight-header">
-            <h4>${safeText(item.faculty_name) || "Unknown faculty"}</h4>
+            <h4>${safeText(item.faculty_name) || "General CSE activity"}</h4>
             ${createBadge(`P${item.priority}`, priorityClass(item.priority))}
           </div>
           <p class="spotlight-summary">${safeText(item.ai_summary)}</p>
@@ -318,8 +335,7 @@ function renderDigestSummary() {
   container.innerHTML = `
     <article class="digest-summary-card">
       <span class="meta-line">Date range</span>
-      <strong>${state.digest.date_range.start_date}</strong>
-      <span class="meta-line">to ${state.digest.date_range.end_date}</span>
+      <strong class="digest-date-range">${state.digest.date_range.start_date} to ${state.digest.date_range.end_date}</strong>
     </article>
     <article class="digest-summary-card">
       <span class="meta-line">Sections</span>
@@ -344,7 +360,7 @@ function renderDigestWorkspace() {
 }
 
 function renderKpis() {
-  document.getElementById("kpi-total").textContent = String(state.activities.length);
+  document.getElementById("kpi-total").textContent = String(state.pagination.total);
   document.getElementById("kpi-pending").textContent = String(
     state.activities.filter((item) => item.review_status === "pending").length,
   );
@@ -353,11 +369,10 @@ function renderKpis() {
 }
 
 function renderSyncCard() {
-  const actions = Object.values(state.reviewActions);
-  const reviewed = actions.filter((item) => item === "reviewed").length;
-  const approved = actions.filter((item) => item === "approved").length;
+  const rejected = state.activities.filter((item) => item.review_status === "rejected").length;
+  const approved = state.activities.filter((item) => item.review_status === "approved").length;
 
-  document.getElementById("sync-reviewed-count").textContent = String(reviewed);
+  document.getElementById("sync-rejected-count").textContent = String(rejected);
   document.getElementById("sync-approved-count").textContent = String(approved);
 
   const stateNode = document.getElementById("sync-state");
@@ -365,13 +380,13 @@ function renderSyncCard() {
 
   if (approved > 0) {
     stateNode.textContent = "Ready to sync";
-    messageNode.textContent = "Approved items are queued in local demo state.";
-  } else if (reviewed > 0) {
+    messageNode.textContent = "Approved items are visible on this page.";
+  } else if (rejected > 0) {
     stateNode.textContent = "Review in progress";
-    messageNode.textContent = "Items have been reviewed locally, but none are approved yet.";
+    messageNode.textContent = "Rejected items are visible on this page.";
   } else {
-    stateNode.textContent = "Mock-safe mode";
-    messageNode.textContent = "Waiting for local review actions.";
+    stateNode.textContent = "Review queue";
+    messageNode.textContent = "Waiting for review actions on this page.";
   }
 }
 
@@ -380,6 +395,12 @@ function buildDigestQuery() {
     max_items_per_category: "4",
   });
 
+  if (state.digestWindow.startDate) {
+    params.set("start_date", state.digestWindow.startDate);
+  }
+  if (state.digestWindow.endDate) {
+    params.set("end_date", state.digestWindow.endDate);
+  }
   if (state.filters.reviewStatus) {
     params.set("review_status", state.filters.reviewStatus);
   }
@@ -387,12 +408,34 @@ function buildDigestQuery() {
   return params.toString();
 }
 
+function updateExportLink(digestQuery = buildDigestQuery()) {
+  const params = new URLSearchParams(digestQuery);
+  params.set("include_section_totals", "true");
+  params.set("summary_max_length", "140");
+  document.getElementById("export-markdown-button").href = `/digest/export/markdown?${params.toString()}`;
+}
+
+function applyDigestWindowFromInputs() {
+  state.digestWindow.startDate = document.getElementById("digest-start-date").value;
+  state.digestWindow.endDate = document.getElementById("digest-end-date").value;
+  if (
+    state.digestWindow.startDate &&
+    state.digestWindow.endDate &&
+    state.digestWindow.startDate > state.digestWindow.endDate
+  ) {
+    setInlineFeedback("digest-feedback", "Start date must be before end date.");
+    return;
+  }
+  updateExportLink();
+  loadDashboard({ digestOnly: true });
+}
+
 function applyFiltersAndRender() {
   state.filteredActivities = filterActivities(state.activities);
-  state.pagination.page = 1;
   updatePaginatedActivities();
   state.highPriority = state.filteredActivities.filter((item) => item.priority >= 4);
 
+  updateStatusTabs();
   renderInbox();
   renderSpotlight();
   renderCharts();
@@ -406,7 +449,49 @@ function applyFiltersAndRender() {
     .filter(Boolean)
     .join(" • ");
 
-  setInlineFeedback("inbox-feedback", filterSummary ? `Showing ${filterSummary}.` : "");
+  setInlineFeedback("inbox-feedback", filterSummary ? `Current page filter: ${filterSummary}.` : "");
+}
+
+function buildActivityPageQuery() {
+  const params = new URLSearchParams({
+    sort_by: "detected_at",
+    sort_order: "desc",
+    days: "30",
+    limit: String(state.pagination.pageSize),
+    offset: String((state.pagination.page - 1) * state.pagination.pageSize),
+  });
+
+  if (state.filters.reviewStatus) {
+    params.set("review_status", state.filters.reviewStatus);
+  }
+  return params.toString();
+}
+
+async function loadActivityPage() {
+  const page = await fetchPayload(`/activities/page?${buildActivityPageQuery()}`);
+  if (!page.items.length && page.total > 0 && page.offset >= page.total) {
+    state.pagination.page = Math.ceil(page.total / state.pagination.pageSize);
+    return loadActivityPage();
+  }
+
+  state.activities = page.items;
+  state.pagination.total = page.total;
+  state.pagination.pageSize = page.limit;
+  state.pagination.page = Math.floor(page.offset / page.limit) + 1;
+  applyFiltersAndRender();
+  renderKpis();
+}
+
+function updateStatusTabs() {
+  document.querySelectorAll("[data-status-tab]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.statusTab === state.filters.reviewStatus);
+  });
+}
+
+function updateStatusFilter(nextStatus) {
+  state.filters.reviewStatus = nextStatus;
+  state.pagination.page = 1;
+  loadActivityPage();
 }
 
 function updateDigestTab(nextTab) {
@@ -433,7 +518,7 @@ function openDetailModal(activityId) {
     <div class="detail-grid">
       <div>
         <p class="section-tag">Activity Detail</p>
-        <h3 id="detail-modal-title">${safeText(activity.faculty_name) || "Unknown faculty"}</h3>
+        <h3 id="detail-modal-title">${safeText(activity.faculty_name) || "General CSE activity"}</h3>
         <div class="item-badges">
           ${createBadge(activity.category)}
           ${createBadge(`Priority ${activity.priority}`, priorityClass(activity.priority))}
@@ -467,12 +552,22 @@ function closeDetailModal() {
   modal.setAttribute("aria-hidden", "true");
 }
 
-function handleReviewAction(activityId, nextState) {
-  state.reviewActions[activityId] = nextState;
-  persistReviewActions();
-  applyFiltersAndRender();
-  renderSyncCard();
-  setStatus(`Review updated locally: ${nextState}.`, "success");
+async function handleReviewAction(activityId, nextState, button) {
+  const endpoint = nextState === "approved" ? "approve" : "reject";
+  button.disabled = true;
+  setStatus(`Updating review status to ${nextState}...`, "loading");
+
+  try {
+    const updated = await fetchPayload(`/activities/${activityId}/${endpoint}`, { method: "POST" });
+    state.activities = state.activities.map((activity) => (activity.id === updated.id ? updated : activity));
+    await loadActivityPage();
+    renderSyncCard();
+    setStatus(`Activity ${nextState}.`, "success");
+  } catch (error) {
+    button.disabled = false;
+    setStatus("Review update failed.", "error");
+    console.error(error);
+  }
 }
 
 async function loadDashboard({ digestOnly = false } = {}) {
@@ -484,12 +579,11 @@ async function loadDashboard({ digestOnly = false } = {}) {
 
   try {
     if (!digestOnly) {
-      state.activities = await fetchPayload("/activities?sort_by=detected_at&sort_order=desc");
-      applyFiltersAndRender();
-      renderKpis();
+      await loadActivityPage();
     }
 
     const digestQuery = buildDigestQuery();
+    updateExportLink(digestQuery);
     const [digest, preview, markdown] = await Promise.all([
       fetchPayload(`/digest?${digestQuery}`),
       fetchPayload(`/digest/preview?${digestQuery}`),
@@ -515,17 +609,17 @@ async function loadDashboard({ digestOnly = false } = {}) {
   }
 }
 
-async function runMockIngestion() {
+async function runIngestion() {
   const button = document.getElementById("ingest-button");
   button.disabled = true;
-  setStatus("Running mock ingestion...", "loading");
+  setStatus("Running ingestion...", "loading");
 
   try {
-    const result = await fetchPayload("/ingest/mock", { method: "POST" });
+    const result = await fetchPayload("/ingest", { method: "POST" });
     await loadDashboard();
-    setStatus(`Mock ingestion complete. Added ${result.ingested_count} activities.`, "success");
+    setStatus(`Ingestion complete. Added ${result.ingested_count} activities.`, "success");
   } catch (error) {
-    setStatus("Mock ingestion failed.", "error");
+    setStatus("Ingestion failed.", "error");
     console.error(error);
   } finally {
     button.disabled = false;
@@ -534,22 +628,19 @@ async function runMockIngestion() {
 
 function changePage(nextPage) {
   state.pagination.page = nextPage;
-  updatePaginatedActivities();
-  renderInbox();
+  loadActivityPage();
 }
 
 function changePageSize(nextSize) {
   state.pagination.pageSize = nextSize;
   state.pagination.page = 1;
-  updatePaginatedActivities();
-  renderInbox();
+  loadActivityPage();
   setStatus(`Page size updated to ${nextSize}.`, "success");
 }
 
 function applyFiltersFromInputs() {
   state.filters.search = document.getElementById("search-filter").value.trim();
   state.filters.category = document.getElementById("category-filter").value;
-  state.filters.reviewStatus = document.getElementById("review-status-filter").value;
   applyFiltersAndRender();
   renderKpis();
 }
@@ -557,20 +648,24 @@ function applyFiltersFromInputs() {
 function clearFilters() {
   document.getElementById("search-filter").value = "";
   document.getElementById("category-filter").value = "";
-  document.getElementById("review-status-filter").value = "";
-  state.filters = { search: "", category: "", reviewStatus: "" };
+  state.filters.search = "";
+  state.filters.category = "";
   applyFiltersAndRender();
   renderKpis();
   setStatus("Filters cleared.", "success");
 }
 
 function bindStaticEvents() {
-  document.getElementById("ingest-button").addEventListener("click", runMockIngestion);
+  document.getElementById("ingest-button").addEventListener("click", runIngestion);
   document.getElementById("digest-refresh-button").addEventListener("click", () => loadDashboard({ digestOnly: true }));
+  document.getElementById("digest-start-date").addEventListener("change", applyDigestWindowFromInputs);
+  document.getElementById("digest-end-date").addEventListener("change", applyDigestWindowFromInputs);
   document.getElementById("search-filter").addEventListener("input", applyFiltersFromInputs);
   document.getElementById("category-filter").addEventListener("change", applyFiltersFromInputs);
-  document.getElementById("review-status-filter").addEventListener("change", applyFiltersFromInputs);
   document.getElementById("clear-filters-button").addEventListener("click", clearFilters);
+  document.querySelectorAll("[data-status-tab]").forEach((button) => {
+    button.addEventListener("click", () => updateStatusFilter(button.dataset.statusTab));
+  });
   document.getElementById("page-size-selector").addEventListener("change", (event) => {
     changePageSize(Number(event.target.value));
   });
@@ -593,7 +688,7 @@ function bindDynamicEvents() {
     const reviewButton = event.target.closest("[data-review-action]");
     if (reviewButton) {
       event.stopPropagation();
-      handleReviewAction(reviewButton.dataset.activityId, reviewButton.dataset.reviewAction);
+      handleReviewAction(reviewButton.dataset.activityId, reviewButton.dataset.reviewAction, reviewButton);
       return;
     }
 
@@ -610,15 +705,13 @@ function bindDynamicEvents() {
     }
   });
 
-  document.getElementById("pagination-pages").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-page-number]");
-    if (button) {
-      changePage(Number(button.dataset.pageNumber));
-    }
-  });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  state.digestWindow = defaultDigestWindow();
+  document.getElementById("digest-start-date").value = state.digestWindow.startDate;
+  document.getElementById("digest-end-date").value = state.digestWindow.endDate;
+  updateExportLink();
   bindStaticEvents();
   bindDynamicEvents();
   updateDigestTab("preview");

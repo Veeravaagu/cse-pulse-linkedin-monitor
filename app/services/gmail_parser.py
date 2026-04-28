@@ -5,6 +5,7 @@ from app.models.schemas import ParsedEmailActivity, RawEmail
 
 URL_PATTERN = re.compile(r"https?://[^\s<>\"']+")
 NAME_PATTERN = re.compile(r"(?:Dr|Prof|Professor)\.?\s+([A-Z][a-z]+\s[A-Z][a-z]+)|([A-Z][a-z]+\s[A-Z][a-z]+)")
+NON_PERSON_TITLES = {"Research Matters"}
 
 
 class GmailParser:
@@ -34,7 +35,10 @@ class GmailParser:
         match = NAME_PATTERN.search(text)
         if not match:
             return None
-        return match.group(1) or match.group(2)
+        candidate = match.group(1) or match.group(2)
+        if candidate in NON_PERSON_TITLES:
+            return None
+        return candidate
 
     @staticmethod
     def _safe_timestamp(value: datetime) -> datetime:

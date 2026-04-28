@@ -5,17 +5,21 @@ from pydantic import BaseModel, Field
 
 
 class ActivityCategory(str, Enum):
-    publication = "publication"
-    grant = "grant"
-    talk = "talk"
+    research = "research"
     award = "award"
-    event = "event"
-    student_achievement = "student achievement"
+    grant = "grant"
+    publication = "publication"
+    talk_event = "talk_event"
+    faculty_student = "faculty_student"
+    department_news = "department_news"
+    funding_opportunity = "funding_opportunity"
     other = "other"
 
 
 class ReviewStatus(str, Enum):
     pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
     reviewed = "reviewed"
 
 

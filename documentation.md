@@ -118,6 +118,45 @@ Guidance:
 - prefer defensive parsing over brittle assumptions
 - add tests for noisy or partial notification content
 
+### UB Newsletter Parsing Handoff
+
+Current Gmail ingestion flow:
+1. Gmail/mock ingestion returns `RawEmail`
+2. filtering keeps clean LinkedIn activity or UB/CSE-relevant email
+3. parsing creates one `ParsedEmailActivity`
+4. ingestion labels source type and applies idempotency
+5. enrichment assigns summary, category, priority, and review status
+6. storage persists one `ActivityRecord`
+
+Ingestion trigger policy:
+- administrators can run manual Gmail ingestion from the dashboard **Run Ingestion** button or `POST /ingest`
+- automatic daily ingestion is external cron calling `.venv/bin/python scripts/run_ingestion_once.py`
+- do not add an app-internal scheduler for daily ingestion
+- successful Gmail runs advance the cursor so later runs query only newer messages where possible
+- duplicate protection still applies, and failed ingestion should not advance the cursor
+
+Local reset policy:
+- normal ingestion should not require wiping `data/activities.json`
+- do not use `echo "[]" > data/activities.json` or `printf '[]\n' > data/activities.json` for normal operation because that deletes approved/rejected history
+- use `.venv/bin/python scripts/clear_pending_activities.py` when local development needs to remove pending test clutter while preserving approved and rejected records
+- keep `data/activities.json` and `data/ingestion_state.json` consistent; wiping only activities can make `POST /ingest` return `ingested_count=0` because the advanced cursor still narrows Gmail to newer messages
+- for development-only reset work, use `.venv/bin/python scripts/reset_local_ingestion_state.py` to clear pending activities and reset the cursor, or add `--all` to explicitly remove all local activities and reset the cursor
+
+Current `source_type` values:
+- `linkedin_email` for LinkedIn activity notifications
+- `ub_cse_email` for UB/CSE-relevant non-LinkedIn email
+
+Known limitation:
+- UB newsletters are bulk, multi-item inputs, but the current parser intentionally produces one activity record per email. Existing guardrails only prevent obvious bad values, such as newsletter titles being treated as faculty names or Research Matters newsletters being categorized as a publication.
+
+Do not do yet:
+- no named entity recognition
+- no multi-activity newsletter splitting
+- no schema or category changes
+
+Recommended future step:
+- add source-type-aware parsing only after collecting enough real UB newsletter examples to justify the parsing rules.
+
 ### Add or change enrichment behavior
 
 Relevant files:
@@ -166,7 +205,7 @@ Guidance:
 
 The following behaviors are intentionally demo-oriented and should not be described as production-ready:
 
-- mock ingestion as the primary active ingestion mode
+- mock ingestion fixtures/helpers for local tests and demos
 - mock heuristic enrichment as the primary active enrichment mode
 - frontend-only review actions in the dashboard
 - JSON file storage as the default persistence layer

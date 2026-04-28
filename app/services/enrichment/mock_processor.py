@@ -10,16 +10,18 @@ class MockProcessor:
     """
 
     CATEGORY_RULES: dict[ActivityCategory, tuple[str, ...]] = {
-        ActivityCategory.publication: ("publication", "paper", "journal"),
-        ActivityCategory.grant: ("grant", "funded", "funding"),
-        ActivityCategory.talk: ("talk", "seminar", "keynote"),
         ActivityCategory.award: ("award", "honor", "winner"),
-        ActivityCategory.event: ("event", "conference", "workshop"),
-        ActivityCategory.student_achievement: ("student", "mentored", "achievement"),
+        ActivityCategory.grant: ("grant", "funded", "grant-funded"),
+        ActivityCategory.publication: ("publication", "paper", "journal"),
+        ActivityCategory.talk_event: ("talk", "seminar", "keynote", "event", "conference", "workshop"),
+        ActivityCategory.faculty_student: ("student", "mentored", "achievement"),
+        ActivityCategory.department_news: ("department news", "department update", "cse news"),
+        ActivityCategory.funding_opportunity: ("funding opportunity", "applications due", "apply by"),
+        ActivityCategory.research: ("research project", "research update", "study"),
     }
 
     def enrich(self, parsed: ParsedEmailActivity) -> EnrichedActivity:
-        category = self._classify(parsed.raw_text)
+        category = self._classify(parsed)
         summary = self._summarize(parsed.raw_text)
         priority = self._priority(category)
 
@@ -30,8 +32,11 @@ class MockProcessor:
             review_status=ReviewStatus.pending,
         )
 
-    def _classify(self, text: str) -> ActivityCategory:
-        lowered = text.lower()
+    def _classify(self, parsed: ParsedEmailActivity) -> ActivityCategory:
+        lowered = parsed.raw_text.lower()
+        if parsed.source_type == "ub_cse_email" and "research matters" in lowered:
+            return ActivityCategory.other
+
         for category, keywords in self.CATEGORY_RULES.items():
             if any(keyword in lowered for keyword in keywords):
                 return category
@@ -47,7 +52,13 @@ class MockProcessor:
     @staticmethod
     def _priority(category: ActivityCategory) -> int:
         high_priority = {ActivityCategory.grant, ActivityCategory.award, ActivityCategory.publication}
-        medium_priority = {ActivityCategory.talk, ActivityCategory.event, ActivityCategory.student_achievement}
+        medium_priority = {
+            ActivityCategory.research,
+            ActivityCategory.talk_event,
+            ActivityCategory.faculty_student,
+            ActivityCategory.department_news,
+            ActivityCategory.funding_opportunity,
+        }
 
         if category in high_priority:
             return 5

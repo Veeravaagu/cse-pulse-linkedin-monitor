@@ -24,14 +24,21 @@ class ActivityStorage(Protocol):
         sort_order: str = "desc",
         offset: int = 0,
         limit: int | None = None,
+        days: int | None = None,
     ) -> list[ActivityRecord]:
         """Return activities with optional filtering, sorting, and pagination."""
 
     def get_by_id(self, record_id: str) -> ActivityRecord | None:
         """Return a single activity, or None if missing."""
 
+    def update_review_status(self, record_id: str, review_status: ReviewStatus) -> ActivityRecord | None:
+        """Persist a review status change, or return None if missing."""
+
     def list_high_priority(self, threshold: int = 4) -> list[ActivityRecord]:
         """Return activities whose priority is at or above the threshold."""
+
+    def exists_by_source_url(self, source_url: str) -> bool:
+        """Return whether an activity with this source URL already exists."""
 
     def create(self, parsed: ParsedEmailActivity, enriched: EnrichedActivity) -> ActivityRecord:
         """Persist one parsed + enriched activity and return the saved row."""

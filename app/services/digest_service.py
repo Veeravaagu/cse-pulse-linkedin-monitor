@@ -179,13 +179,13 @@ class DigestService:
 
     @staticmethod
     def _format_category_name(category: ActivityCategory) -> str:
-        return category.value.title()
+        return category.value.replace("_", " ").title()
 
     @staticmethod
     def _serialize_item(item: ActivityRecord) -> dict[str, object]:
         return {
             "id": item.id,
-            "faculty_name": item.faculty_name or "Unknown faculty",
+            "faculty_name": item.faculty_name or "General CSE activity",
             "ai_summary": item.ai_summary,
             "priority": item.priority,
             "detected_at": item.detected_at.isoformat(),

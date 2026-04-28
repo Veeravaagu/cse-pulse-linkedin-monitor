@@ -40,7 +40,7 @@ def _seed_digest_file(file_path: str) -> None:
             "source_url": "https://www.linkedin.com/feed/update/3",
             "raw_text": "Workshop event announced.",
             "ai_summary": "Announced an upcoming workshop.",
-            "category": ActivityCategory.event.value,
+            "category": ActivityCategory.talk_event.value,
             "priority": 3,
             "detected_at": (now - timedelta(days=10)).isoformat(),
             "review_status": ReviewStatus.reviewed.value,
@@ -128,6 +128,56 @@ def test_digest_service_returns_structured_grouped_output(tmp_path) -> None:
     assert all("items" in section for section in digest["sections"])
 
 
+def test_digest_service_uses_source_neutral_fallback_for_unattributed_activity(tmp_path) -> None:
+    data_file = tmp_path / "activities.json"
+    now = datetime.now(timezone.utc)
+    payload = [
+        {
+            "id": "activity-1",
+            "faculty_name": None,
+            "source_type": "ub_cse_email",
+            "source_url": None,
+            "raw_text": "UB CSE newsletter update.",
+            "ai_summary": "General department research update.",
+            "category": ActivityCategory.other.value,
+            "priority": 2,
+            "detected_at": now.isoformat(),
+            "review_status": ReviewStatus.pending.value,
+        },
+        {
+            "id": "activity-2",
+            "faculty_name": "Alice Johnson",
+            "source_type": "linkedin_email",
+            "source_url": "https://www.linkedin.com/feed/update/2",
+            "raw_text": "Publication accepted.",
+            "ai_summary": "Publication accepted.",
+            "category": ActivityCategory.publication.value,
+            "priority": 4,
+            "detected_at": (now - timedelta(days=1)).isoformat(),
+            "review_status": ReviewStatus.pending.value,
+        },
+    ]
+    with open(data_file, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2)
+
+    service = DigestService(JSONStorageService(str(data_file)))
+    preview = service.generate_preview()
+    structured = service.generate_structured()
+    markdown = service.generate_markdown_export()
+
+    assert "General CSE activity" in preview
+    assert "General CSE activity" in markdown
+    assert "Unknown faculty" not in preview
+    assert "Unknown faculty" not in markdown
+    assert any(
+        item["faculty_name"] == "General CSE activity"
+        for section in structured["sections"]
+        for item in section["items"]
+    )
+    assert "Alice Johnson" in preview
+    assert "Alice Johnson" in markdown
+
+
 def test_digest_service_returns_empty_structured_state(tmp_path) -> None:
     data_file = tmp_path / "activities.json"
     data_file.write_text("[]", encoding="utf-8")
@@ -199,7 +249,7 @@ def test_markdown_export_formats_sections_in_deterministic_category_order(tmp_pa
 
     markdown = service.generate_markdown_export(include_section_totals=True)
 
-    assert markdown.index("## Publication (1)") < markdown.index("## Award (1)")
+    assert markdown.index("## Award (1)") < markdown.index("## Publication (1)")
 
 
 def test_markdown_export_applies_max_item_trimming_and_summary_truncation(tmp_path) -> None:

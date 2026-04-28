@@ -32,7 +32,7 @@ Primary use cases:
 
 - Ingestion
   - `mock` ingestion mode reads local sample payloads
-  - `gmail` mode exists as an architectural scaffold, not a live integration
+  - `gmail` ingestion mode reads Gmail API messages with the read-only scope when configured
 - Parsing
   - extracts source URL, faculty name when detectable, raw text, and detection timestamp
 - Enrichment
@@ -65,17 +65,16 @@ Implemented today:
 - optional Google Sheets sync path
 
 Not yet production-ready:
-- real Gmail API ingestion
 - scheduled or automated ingestion
 - persistent database backend
-- deduplication/idempotency
 - persistent review workflow state
 - real LLM integration
 - deployment, auth, and operational hardening
 
 ## Known Limitations
 
-- `gmail` ingestion mode is a scaffold and currently does not pull live messages
+- Gmail ingestion requires either a service account credentials file or a pre-generated local OAuth user token
+- service accounts can only read a real mailbox if your Google Workspace setup grants appropriate Gmail API access to that service account
 - the `llm` enrichment mode is a scaffold and raises until implemented
 - JSON storage is suitable for local use, not multi-user or hosted operation
 - dashboard review actions are frontend-only and do not persist to backend storage
@@ -140,11 +139,120 @@ After starting the backend, open:
 - `http://127.0.0.1:8000/`
 
 Suggested demo actions:
-- run mock ingestion from the UI
+- run Gmail ingestion from the UI
 - filter the activity inbox
 - inspect the high-priority spotlight
 - switch among digest preview, JSON, and Markdown views
 - use frontend-only review actions to drive the mock sync status card
+
+## Enabling Gmail Read-Only Ingestion
+
+Gmail ingestion is disabled by default. The implementation only uses the Gmail API read-only scope:
+
+```text
+https://www.googleapis.com/auth/gmail.readonly
+```
+
+Set the shared Gmail settings in `.env`:
+
+```env
+INGESTION_MODE=gmail
+AI_PROVIDER=mock
+GMAIL_QUERY=from:linkedin.com
+GMAIL_MAX_RESULTS=25
+GOOGLE_SHEETS_ENABLED=false
+```
+
+Then choose one auth mode.
+
+### Service Account / Workspace Delegation
+
+```env
+GMAIL_CREDENTIALS_PATH=/absolute/path/to/gmail-service-account.json
+GMAIL_OAUTH_CLIENT_SECRET_PATH=
+GMAIL_TOKEN_PATH=
+```
+
+`GMAIL_CREDENTIALS_PATH` must point to a Google service account JSON credentials file. Service-account auth is checked first when this value is set.
+
+Notes:
+- enable the Gmail API in the Google Cloud project that owns the service account
+- for a real user mailbox, the service account must be authorized by your Google Workspace administrator for Gmail API read-only access
+
+### Local OAuth User Token
+
+```env
+GMAIL_CREDENTIALS_PATH=
+GMAIL_OAUTH_CLIENT_SECRET_PATH=/absolute/path/to/oauth-client-secret.json
+GMAIL_TOKEN_PATH=/absolute/path/to/gmail-token.json
+```
+
+Use this mode for ordinary local Gmail accounts. `GMAIL_OAUTH_CLIENT_SECRET_PATH` is the installed-app OAuth client secret used to generate the user token outside the app. `GMAIL_TOKEN_PATH` must point to an existing authorized-user token JSON file.
+
+The app does not launch a browser or run OAuth consent during ingestion. If `GMAIL_TOKEN_PATH` is missing, ingestion returns an empty batch safely. If the token is expired and has a refresh token, the app refreshes it and writes the updated token JSON back to `GMAIL_TOKEN_PATH`.
+
+Generate the token once from your shell:
+
+```bash
+source .venv/bin/activate
+python scripts/gmail_oauth_setup.py
+```
+
+The setup script reads `GMAIL_OAUTH_CLIENT_SECRET_PATH` and `GMAIL_TOKEN_PATH`, opens the browser for Google consent, and saves the authorized token JSON to `GMAIL_TOKEN_PATH`.
+
+Notes:
+- the token must be generated separately with the Gmail read-only scope
+- the app does not delete, archive, label, or mark messages as read
+- it lists matching messages and fetches each full message payload through the Gmail API
+
+Local smoke test:
+
+```bash
+source .venv/bin/activate
+uvicorn app.main:app --reload
+curl -X POST http://127.0.0.1:8000/ingest
+```
+
+If credentials are missing, unavailable, or unauthorized, the ingestion path safely returns an empty batch and leaves mock mode unaffected.
+
+## Ingestion Triggers
+
+Manual ingestion remains available for administrators from either:
+- the dashboard **Run Ingestion** button
+- the API endpoint `POST /ingest`
+
+Automatic daily ingestion should be run outside the app with cron. The FastAPI app does not include an internal scheduler. Cron should call the same one-shot ingestion script:
+
+```bash
+cd /path/to/cse-pulse-linkedin-monitor
+.venv/bin/python scripts/run_ingestion_once.py
+```
+
+Sample daily cron entry for local/dev use:
+
+```cron
+0 8 * * * cd /path/to/cse-pulse-linkedin-monitor && .venv/bin/python scripts/run_ingestion_once.py >> logs/ingestion.log 2>&1
+```
+
+Create the `logs/` directory first if you use the sample redirect. The script does not schedule work itself; cron or another local scheduler calls it once per run.
+
+For Gmail ingestion, successful runs store `last_successful_ingestion_at` in `data/ingestion_state.json` by default. Later runs use that cursor to query only newer Gmail messages where possible, while existing duplicate protection still prevents duplicate stored activities. Failed ingestion runs should not advance the cursor. Delete or reset the state file to force a wider local re-run.
+
+Do not use `echo "[]" > data/activities.json` or `printf '[]\n' > data/activities.json` as a normal reset workflow. That deletes approved and rejected history as well as pending test clutter. For local cleanup that preserves reviewed history, clear only pending activities:
+
+```bash
+.venv/bin/python scripts/clear_pending_activities.py
+```
+
+Activities and the Gmail ingestion cursor must stay consistent. If `data/activities.json` is wiped but `data/ingestion_state.json` still contains an advanced `last_successful_ingestion_at`, the next `POST /ingest` may return `ingested_count=0` because Gmail is queried only for messages newer than the cursor. For development-only reset work that also resets the cursor, use:
+
+```bash
+# Clears pending activities and resets the Gmail ingestion cursor.
+.venv/bin/python scripts/reset_local_ingestion_state.py
+
+# Explicitly clear all local activities and reset the cursor.
+.venv/bin/python scripts/reset_local_ingestion_state.py --all
+```
 
 ## Enabling Google Sheets Sync
 
@@ -164,57 +272,115 @@ Notes:
 - if Google client libraries or credentials are unavailable, the sync path safely no-ops
 - the current implementation appends rows; it does not yet deduplicate or update existing rows
 
-## Key Endpoints
+## Operational API Reference
 
-### Core API
+### `GET /health`
 
-- `GET /health`
-- `POST /ingest`
-- `POST /ingest/mock`
+Purpose: report whether the app can read activity storage.
+
+```bash
+curl "http://127.0.0.1:8000/health"
+```
+
+Response shape: JSON object with `status`, `service`, `storage`, and `activity_count`.
+
+### `POST /ingest`
+
+Purpose: run the Gmail-backed ingestion flow once. New activities are stored with `review_status="pending"`.
+
+```bash
+curl -s -X POST "http://127.0.0.1:8000/ingest"
+```
+
+Response shape: JSON object with `ingested_count` and `activities`.
+
+### `GET /activities?review_status=pending`
+
+Purpose: list activities waiting for admin review.
+
+```bash
+curl -s "http://127.0.0.1:8000/activities?review_status=pending"
+```
+
+Response shape: JSON array of activity records.
+
+### `POST /activities/{activity_id}/approve`
+
+Purpose: approve one pending activity by id.
+
+```bash
+curl -s -X POST "http://127.0.0.1:8000/activities/activity-123/approve"
+```
+
+Response shape: one activity record with `review_status="approved"`.
+
+### `POST /activities/{activity_id}/reject`
+
+Purpose: reject one pending activity by id.
+
+```bash
+curl -s -X POST "http://127.0.0.1:8000/activities/activity-123/reject"
+```
+
+Response shape: one activity record with `review_status="rejected"`.
+
+### `GET /activities/approved`
+
+Purpose: downstream-safe feed containing only approved activities.
+
+```bash
+curl -s "http://127.0.0.1:8000/activities/approved"
+```
+
+Response shape: JSON array of activity records where every item has `review_status="approved"`.
+
+### CLI ingestion command
+
+Purpose: cron-friendly one-shot ingestion using the configured ingestion flow.
+
+```bash
+cd /path/to/cse-pulse-linkedin-monitor
+.venv/bin/python scripts/run_ingestion_once.py
+```
+
+Response shape: plain text summary with `ingested_count`, followed by created activity ids/statuses/source types.
+
+Other useful endpoints:
 - `GET /activities`
 - `GET /activities/high-priority`
 - `GET /activities/{activity_id}`
-
-### Digest API
-
 - `GET /digest/preview`
 - `GET /digest`
 - `GET /digest/export/markdown`
-
-### Dashboard
-
 - `GET /`
 
-### Common query patterns
+### Manual smoke test: ingestion -> review -> approved API
 
-List filtered activities:
-
-```bash
-curl "http://127.0.0.1:8000/activities?category=award&review_status=pending"
-```
-
-List sorted activities:
+With the FastAPI app running locally:
 
 ```bash
-curl "http://127.0.0.1:8000/activities?sort_by=priority&sort_order=desc"
-```
+# 1. Optional local cleanup: remove pending test clutter while preserving approved/rejected history.
+.venv/bin/python scripts/clear_pending_activities.py
 
-List paginated activities:
+# 2. Run ingestion.
+curl -s -X POST http://127.0.0.1:8000/ingest
 
-```bash
-curl "http://127.0.0.1:8000/activities?offset=0&limit=10"
-```
+# 3. Confirm pending activity appears.
+curl -s "http://127.0.0.1:8000/activities?review_status=pending"
 
-Fetch a structured digest:
+# 4. Approve one pending activity.
+APPROVE_ID=$(curl -s "http://127.0.0.1:8000/activities?review_status=pending" | python3 -c 'import json,sys; items=json.load(sys.stdin); print(items[0]["id"] if items else "")')
+curl -s -X POST "http://127.0.0.1:8000/activities/${APPROVE_ID}/approve"
 
-```bash
-curl "http://127.0.0.1:8000/digest?review_status=pending&max_items_per_category=3"
-```
+# Optional: reject one remaining pending activity so exclusion is easy to verify.
+REJECT_ID=$(curl -s "http://127.0.0.1:8000/activities?review_status=pending" | python3 -c 'import json,sys; items=json.load(sys.stdin); print(items[0]["id"] if items else "")')
+if [ -n "$REJECT_ID" ]; then curl -s -X POST "http://127.0.0.1:8000/activities/${REJECT_ID}/reject"; fi
 
-Fetch a Markdown digest export:
+# 5. Confirm the approved-only endpoint returns the approved item.
+curl -s "http://127.0.0.1:8000/activities/approved"
 
-```bash
-curl "http://127.0.0.1:8000/digest/export/markdown?include_section_totals=true"
+# 6. Confirm approved-only excludes pending/rejected records.
+curl -s "http://127.0.0.1:8000/activities/approved" | python3 -c 'import json,sys; items=json.load(sys.stdin); assert items and all(item["review_status"] == "approved" for item in items); print("approved-only endpoint OK")'
 ```
 
 ## Configuration
@@ -226,11 +392,15 @@ High-impact settings:
 - `MOCK_EMAIL_PAYLOAD_PATH`
 - `AI_PROVIDER`
 - `DATA_FILE`
+- `INGESTION_STATE_FILE`
 - `GOOGLE_SHEETS_ENABLED`
 - `GOOGLE_SHEETS_ID`
 - `GOOGLE_SERVICE_ACCOUNT_PATH`
 - `GMAIL_QUERY`
 - `GMAIL_MAX_RESULTS`
+- `GMAIL_CREDENTIALS_PATH`
+- `GMAIL_OAUTH_CLIENT_SECRET_PATH`
+- `GMAIL_TOKEN_PATH`
 
 ## Testing
 

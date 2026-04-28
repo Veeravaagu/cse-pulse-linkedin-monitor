@@ -37,6 +37,16 @@ def test_json_storage_supports_normal_reads_and_writes(tmp_path) -> None:
     assert storage.get_by_id(created.id) is not None
 
 
+def test_json_storage_reports_existing_source_url(tmp_path) -> None:
+    storage = JSONStorageService(str(tmp_path / "activities.json"))
+    parsed = _sample_parsed_activity()
+
+    storage.create(parsed, _sample_enriched_activity())
+
+    assert storage.exists_by_source_url(parsed.source_url) is True
+    assert storage.exists_by_source_url("https://www.linkedin.com/feed/update/missing") is False
+
+
 def test_json_storage_uses_atomic_replace_on_write(tmp_path, monkeypatch) -> None:
     storage = JSONStorageService(str(tmp_path / "activities.json"))
     replaced: dict[str, Path] = {}
@@ -73,3 +83,60 @@ def test_json_storage_treats_corrupted_file_as_no_records(tmp_path) -> None:
 
     assert storage.list_all() == []
     assert storage.get_by_id("missing") is None
+
+
+def test_json_storage_reads_legacy_category_values(tmp_path) -> None:
+    file_path = tmp_path / "activities.json"
+    now = datetime.now(timezone.utc).isoformat()
+    file_path.write_text(
+        json.dumps(
+            [
+                {
+                    "id": "activity-talk",
+                    "faculty_name": "Alice Johnson",
+                    "source_type": "linkedin_email",
+                    "source_url": "https://www.linkedin.com/feed/update/talk",
+                    "raw_text": "Seminar announced.",
+                    "ai_summary": "Seminar announced.",
+                    "category": "talk",
+                    "priority": 3,
+                    "detected_at": now,
+                    "review_status": ReviewStatus.pending.value,
+                },
+                {
+                    "id": "activity-event",
+                    "faculty_name": "Bob Lee",
+                    "source_type": "linkedin_email",
+                    "source_url": "https://www.linkedin.com/feed/update/event",
+                    "raw_text": "Workshop announced.",
+                    "ai_summary": "Workshop announced.",
+                    "category": "event",
+                    "priority": 3,
+                    "detected_at": now,
+                    "review_status": ReviewStatus.pending.value,
+                },
+                {
+                    "id": "activity-student",
+                    "faculty_name": "Carla Smith",
+                    "source_type": "linkedin_email",
+                    "source_url": "https://www.linkedin.com/feed/update/student",
+                    "raw_text": "Student achievement announced.",
+                    "ai_summary": "Student achievement announced.",
+                    "category": "student achievement",
+                    "priority": 3,
+                    "detected_at": now,
+                    "review_status": ReviewStatus.pending.value,
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+    storage = JSONStorageService(str(file_path))
+
+    records = storage.list_all()
+
+    assert [record.category for record in records] == [
+        ActivityCategory.talk_event,
+        ActivityCategory.talk_event,
+        ActivityCategory.faculty_student,
+    ]
