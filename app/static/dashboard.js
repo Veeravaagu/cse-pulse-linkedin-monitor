@@ -25,6 +25,11 @@ const state = {
   pendingDeleteIds: [],
 };
 
+const isPublicView = (() => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("public") === "1";
+})();
+
 async function fetchPayload(url, options = {}) {
   const response = await fetch(url, options);
   if (!response.ok) {
@@ -156,6 +161,9 @@ function getVisibleRejectedActivities() {
 }
 
 function isActionableTab() {
+  if (isPublicView) {
+    return false;
+  }
   return ["pending", "approved", "rejected"].includes(state.filters.reviewStatus);
 }
 
@@ -174,6 +182,12 @@ function pruneSelection() {
 
 function updateBatchActions() {
   const toolbar = document.getElementById("batch-toolbar");
+  if (isPublicView) {
+    toolbar.hidden = true;
+    document.getElementById("selection-summary").textContent = "0 selected";
+    document.getElementById("batch-actions").innerHTML = "";
+    return;
+  }
   const actions = document.getElementById("batch-actions");
   const selectedActivities = getSelectedActivities();
   const selectedRejectedCount = selectedActivities.filter((activity) => activity.review_status === "rejected").length;
@@ -240,7 +254,9 @@ function createActivityCard(activity) {
     : "";
   let reviewControls = "";
 
-  if (isSelected) {
+  if (isPublicView) {
+    reviewControls = "";
+  } else if (isSelected) {
     reviewControls = "";
   } else if (state.filters.reviewStatus === "pending") {
     reviewControls = `
@@ -532,6 +548,15 @@ async function loadActivityPage() {
   applyFiltersAndRender();
 }
 
+async function loadPublicActivities() {
+  setInlineFeedback("inbox-feedback", "Loading public activity feed...");
+  const items = await fetchPayload("/activities/public");
+  state.activities = Array.isArray(items) ? items : [];
+  state.pagination.total = state.activities.length;
+  state.pagination.page = 1;
+  applyFiltersAndRender();
+}
+
 function updateStatusTabs() {
   document.querySelectorAll("[data-status-tab]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.statusTab === state.filters.reviewStatus);
@@ -543,6 +568,10 @@ function updateStatusFilter(nextStatus) {
   state.pagination.page = 1;
   clearSelection();
   updateBatchActions();
+  if (isPublicView) {
+    applyFiltersAndRender();
+    return;
+  }
   loadActivityPage();
 }
 
@@ -716,7 +745,11 @@ async function loadDashboard({ digestOnly = false } = {}) {
 
   try {
     if (!digestOnly) {
-      await loadActivityPage();
+      if (isPublicView) {
+        await loadPublicActivities();
+      } else {
+        await loadActivityPage();
+      }
     }
 
     const digestQuery = buildDigestQuery();
@@ -763,13 +796,21 @@ async function runIngestion() {
 
 function changePage(nextPage) {
   state.pagination.page = nextPage;
+  if (isPublicView) {
+    applyFiltersAndRender();
+    return;
+  }
   loadActivityPage();
 }
 
 function changePageSize(nextSize) {
   state.pagination.pageSize = nextSize;
   state.pagination.page = 1;
-  loadActivityPage();
+  if (isPublicView) {
+    applyFiltersAndRender();
+  } else {
+    loadActivityPage();
+  }
   setStatus(`Page size updated to ${nextSize}.`, "success");
 }
 
@@ -789,7 +830,12 @@ function clearFilters() {
 }
 
 function bindStaticEvents() {
-  document.getElementById("ingest-button").addEventListener("click", runIngestion);
+  const ingestButton = document.getElementById("ingest-button");
+  if (!isPublicView) {
+    ingestButton.addEventListener("click", runIngestion);
+  } else {
+    ingestButton.hidden = true;
+  }
   document.getElementById("digest-refresh-button").addEventListener("click", () => loadDashboard({ digestOnly: true }));
   document.getElementById("digest-start-date").addEventListener("change", applyDigestWindowFromInputs);
   document.getElementById("digest-end-date").addEventListener("change", applyDigestWindowFromInputs);
@@ -797,6 +843,9 @@ function bindStaticEvents() {
   document.getElementById("category-filter").addEventListener("change", applyFiltersFromInputs);
   document.getElementById("clear-filters-button").addEventListener("click", clearFilters);
   document.getElementById("batch-toolbar").addEventListener("click", (event) => {
+    if (isPublicView) {
+      return;
+    }
     const reviewButton = event.target.closest("[data-batch-review-action]");
     if (reviewButton) {
       handleBatchReviewAction(reviewButton.dataset.batchReviewAction);
@@ -840,6 +889,14 @@ function bindStaticEvents() {
 
 function bindDynamicEvents() {
   document.getElementById("activity-inbox").addEventListener("click", (event) => {
+    if (isPublicView) {
+      const card = event.target.closest("[data-activity-id]");
+      if (card) {
+        openDetailModal(card.dataset.activityId);
+      }
+      return;
+    }
+
     const selectBox = event.target.closest("[data-select-activity-id]");
     if (selectBox) {
       event.stopPropagation();
