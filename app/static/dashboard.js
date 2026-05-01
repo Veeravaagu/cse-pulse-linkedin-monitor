@@ -109,6 +109,10 @@ function createBadge(label, className = "") {
   return `<span class="pill ${className}">${label}</span>`;
 }
 
+function formatCompactLabel(value) {
+  return safeText(value).replaceAll("_", " ");
+}
+
 function deriveReviewLabel(activity) {
   return activity.review_status || "pending";
 }
@@ -310,7 +314,7 @@ function createActivityCard(activity) {
         <h3 class="item-title" title="${activityLabel}">${activityLabel}</h3>
       </div>
       <div class="item-badges">
-        ${createBadge(activity.category)}
+        ${createBadge(formatCompactLabel(activity.category))}
         ${createBadge(`Priority ${activity.priority}`, priorityClass(activity.priority))}
         ${createReviewBadge(activity)}
       </div>
@@ -366,18 +370,25 @@ function renderSpotlight() {
 
   container.className = "spotlight-list";
   container.innerHTML = items
-    .map(
-      (item) => `
-        <article class="spotlight-card" data-activity-id="${item.id}">
-          <div class="spotlight-header">
-            <h4>${safeText(item.faculty_name) || "General CSE activity"}</h4>
-            ${createBadge(`P${item.priority}`, priorityClass(item.priority))}
+    .map((item) => {
+      const priorityTone = item.priority >= 5 ? "is-critical" : "is-elevated";
+      return `
+        <article class="spotlight-card ${priorityTone}" data-activity-id="${item.id}">
+          <div class="spotlight-priority">
+            <span class="priority-score">${item.priority}</span>
+            <span class="priority-label">Priority</span>
           </div>
-          <p class="spotlight-summary">${safeText(item.ai_summary)}</p>
-          <div class="meta-line">${item.category} • ${item.detected_at.slice(0, 10)}</div>
+          <div class="spotlight-content">
+            <div class="spotlight-header">
+              <h4>${safeText(item.faculty_name) || "General CSE activity"}</h4>
+              ${createBadge(formatCompactLabel(item.category))}
+            </div>
+            <p class="spotlight-summary">${safeText(item.ai_summary)}</p>
+            <div class="meta-line">${item.detected_at.slice(0, 10)} • ${formatCompactLabel(item.source_type)}</div>
+          </div>
         </article>
-      `,
-    )
+      `;
+    })
     .join("");
 }
 
@@ -393,26 +404,6 @@ function isoDay(date) {
   return date.toISOString().slice(0, 10);
 }
 
-function buildCompactMixRows(rows, total, colorMap) {
-  return rows
-    .map((item) => {
-      const share = total > 0 ? (item.value / total) * 100 : 0;
-      const color = colorMap[item.label] || "#005bbb";
-      return `
-        <div class="mix-row">
-          <div class="mix-label-line">
-            <span class="mix-label"><i class="mix-dot" style="--dot:${color}"></i>${item.label}</span>
-            <span class="mix-value">${item.value} • ${Math.round(share)}%</span>
-          </div>
-          <div class="mix-track">
-            <div class="mix-fill" style="--fill:${color};width:${share.toFixed(2)}%"></div>
-          </div>
-        </div>
-      `;
-    })
-    .join("");
-}
-
 function renderCharts() {
   const charts = document.getElementById("charts-grid");
   const activities = state.filteredActivities;
@@ -423,38 +414,10 @@ function renderCharts() {
     return;
   }
 
-  const categoryCounts = {};
-  const priorityCounts = { "Priority 5": 0, "Priority 4": 0, "Priority 1-3": 0 };
-
-  activities.forEach((activity) => {
-    categoryCounts[activity.category] = (categoryCounts[activity.category] || 0) + 1;
-    if (activity.priority >= 5) {
-      priorityCounts["Priority 5"] += 1;
-    } else if (activity.priority >= 4) {
-      priorityCounts["Priority 4"] += 1;
-    } else {
-      priorityCounts["Priority 1-3"] += 1;
-    }
-  });
-
-  const categoryRows = Object.entries(categoryCounts)
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .slice(0, 4)
-    .map(([label, value]) => ({ label, value }));
-
-  const priorityRows = Object.entries(priorityCounts).map(([label, value]) => ({ label, value }));
-  const total = activities.length;
-  const categoryPalette = ["#005bbb", "#1c7c54", "#bf6f00", "#6b7280"];
-  const categoryColorMap = categoryRows.reduce((acc, item, index) => {
-    acc[item.label] = categoryPalette[index % categoryPalette.length];
-    return acc;
-  }, {});
-  const priorityColors = {
-    "Priority 5": "#bf6f00",
-    "Priority 4": "#005bbb",
-    "Priority 1-3": "#6b7280",
-  };
-  const topCategory = categoryRows[0];
+  const pendingCount =
+    state.filters.reviewStatus === "pending"
+      ? state.pagination.total
+      : activities.filter((activity) => activity.review_status === "pending").length;
   const priorityHighCount = activities.filter((activity) => activity.priority >= 5).length;
   const recentWeekCount = activities.filter((activity) => {
     const ts = new Date(activity.detected_at).getTime();
@@ -466,39 +429,20 @@ function renderCharts() {
 
   charts.className = "charts-grid";
   charts.innerHTML = `
-    <article class="chart-card summary-card">
-      <h4>At a glance</h4>
-      <div class="insight-stats">
-        <div class="insight-stat">
-          <span class="insight-stat-label">Visible activities</span>
-          <strong class="insight-stat-value">${total}</strong>
-        </div>
-        <div class="insight-stat">
-          <span class="insight-stat-label">Top category</span>
-          <strong class="insight-stat-value">${topCategory ? topCategory.label : "n/a"}</strong>
-        </div>
-        <div class="insight-stat">
-          <span class="insight-stat-label">Priority 5 count</span>
-          <strong class="insight-stat-value">${priorityHighCount}</strong>
-        </div>
-        <div class="insight-stat">
-          <span class="insight-stat-label">Last 7 days</span>
-          <strong class="insight-stat-value">${recentWeekCount}</strong>
-        </div>
+    <div class="ops-stats" aria-label="Operational snapshot">
+      <div class="ops-stat">
+        <span class="ops-stat-label">Pending</span>
+        <strong class="ops-stat-value">${pendingCount}</strong>
       </div>
-    </article>
-    <article class="chart-card compact-mix-card">
-      <h4>Category mix</h4>
-      <div class="mix-grid" role="img" aria-label="Category distribution">
-        ${buildCompactMixRows(categoryRows, total, categoryColorMap)}
+      <div class="ops-stat ops-stat-priority">
+        <span class="ops-stat-label">High priority</span>
+        <strong class="ops-stat-value">${priorityHighCount}</strong>
       </div>
-    </article>
-    <article class="chart-card compact-mix-card">
-      <h4>Priority mix</h4>
-      <div class="mix-grid" role="img" aria-label="Priority distribution">
-        ${buildCompactMixRows(priorityRows, total, priorityColors)}
+      <div class="ops-stat">
+        <span class="ops-stat-label">Last 7 days</span>
+        <strong class="ops-stat-value">${recentWeekCount}</strong>
       </div>
-    </article>
+    </div>
   `;
 }
 
@@ -533,34 +477,25 @@ function renderTimeline() {
 
   const rows = buildSevenDayRows(activities);
   const max = Math.max(...rows.map((item) => item.value), 1);
-  const trendTotal = rows.reduce((sum, item) => sum + item.value, 0);
 
   container.className = "timeline-chart";
   container.innerHTML = `
-    <article class="chart-card trend-card">
-      <div class="trend-header">
-        <h4>7-day activity trend</h4>
-        <span class="trend-total">${trendTotal} items</span>
-      </div>
-      <div class="trend-bars" role="img" aria-label="Detected activity by day">
-        ${rows
-          .map((item) => {
-            const height = (item.value / max) * 100;
-            const barHeight = item.value === 0 ? 0 : Math.max(10, height);
-            return `
-              <div class="trend-day">
-                <div class="trend-column-wrap ${item.value === 0 ? "is-zero-day" : ""}">
-                  <div class="trend-column ${item.value === 0 ? "is-zero" : ""}" style="height:${barHeight.toFixed(2)}%"></div>
-                </div>
-                <span class="trend-value">${item.value}</span>
-                <span class="trend-label">${formatShortDayLabel(item.label)}</span>
+    <div class="ops-trend" role="img" aria-label="Detected activity by day over the last 7 days">
+      ${rows
+        .map((item) => {
+          const height = (item.value / max) * 100;
+          const barHeight = item.value === 0 ? 0 : Math.max(10, height);
+          return `
+            <div class="trend-day">
+              <div class="trend-column-wrap ${item.value === 0 ? "is-zero-day" : ""}">
+                <div class="trend-column ${item.value === 0 ? "is-zero" : ""}" style="height:${barHeight.toFixed(2)}%"></div>
               </div>
-            `;
-          })
-          .join("")}
-        </div>
-      </div>
-    </article>
+              <span class="trend-label">${formatShortDayLabel(item.label)}</span>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
   `;
 }
 
@@ -764,32 +699,36 @@ function openDetailModal(activityId) {
   const modal = document.getElementById("detail-modal");
   const content = document.getElementById("detail-modal-content");
   const reviewLabel = formatReviewLabel(deriveReviewLabel(activity));
+  const sourceUrl = safeText(activity.source_url);
 
   content.innerHTML = `
     <div class="detail-grid">
-      <div>
+      <header class="detail-header">
         <p class="section-tag">Activity Detail</p>
         <h3 id="detail-modal-title">${safeText(activity.faculty_name) || "General CSE activity"}</h3>
         <div class="item-badges">
-          ${createBadge(activity.category)}
+          ${createBadge(formatCompactLabel(activity.category))}
           ${createBadge(`Priority ${activity.priority}`, priorityClass(activity.priority))}
-          ${createBadge(`Review ${reviewLabel}`, "review-chip")}
+          ${createBadge(`Review ${reviewLabel}`, `review-chip review-${deriveReviewLabel(activity)}`)}
         </div>
-      </div>
-      <div class="detail-box">
+      </header>
+      <section class="detail-section detail-summary-section">
         <h4>Summary</h4>
-        <p>${safeText(activity.ai_summary)}</p>
-      </div>
-      <div class="detail-box">
-        <h4>Source Details</h4>
-        <p><b>Detected:</b> ${activity.detected_at}</p>
-        <p><b>Source type:</b> ${activity.source_type}</p>
-        <p><b>Source URL:</b> ${safeText(activity.source_url) || "Unavailable"}</p>
-      </div>
-      <div class="detail-box">
-        <h4>Raw Activity Text</h4>
+        <p class="detail-summary-text">${safeText(activity.ai_summary)}</p>
+      </section>
+      <section class="detail-section">
+        <h4>Metadata</h4>
+        <dl class="detail-meta-grid">
+          <div><dt>Detected</dt><dd>${activity.detected_at}</dd></div>
+          <div><dt>Source</dt><dd>${formatCompactLabel(activity.source_type)}</dd></div>
+          <div><dt>Category</dt><dd>${formatCompactLabel(activity.category)}</dd></div>
+          <div><dt>Source URL</dt><dd>${sourceUrl || "Unavailable"}</dd></div>
+        </dl>
+      </section>
+      <details class="detail-section detail-raw">
+        <summary>Raw activity text</summary>
         <p>${safeText(activity.raw_text)}</p>
-      </div>
+      </details>
     </div>
   `;
 
