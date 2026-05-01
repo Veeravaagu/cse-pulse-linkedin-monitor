@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 48" fill="none">
+  
+  <rect width="240" height="48" fill="none"></rect>
+  
+  <path d="M4 6 L4 30 Q4 42 18 46 Q32 42 32 30 L32 6 Z" fill="#005BBB"></path>
+  <path d="M10 12 L10 30 Q10 38 18 41 Q26 38 26 30 L26 12 Z" fill="white"></path>
+  <text x="14" y="31" font-family="&#39;IBM Plex Sans&#39;,Arial,sans-serif" font-size="13" font-weight="700" fill="#005BBB">UB</text>
+  
+  <text x="42" y="20" font-family="&#39;IBM Plex Sans&#39;,Arial,sans-serif" font-size="10" font-weight="700" letter-spacing="0.12em" fill="#005BBB">UNIVERSITY AT BUFFALO</text>
+  <text x="42" y="34" font-family="&#39;IBM Plex Sans&#39;,Arial,sans-serif" font-size="9" font-weight="400" letter-spacing="0.08em" fill="#4A5568">THE STATE UNIVERSITY OF NEW YORK</text>
+</svg>

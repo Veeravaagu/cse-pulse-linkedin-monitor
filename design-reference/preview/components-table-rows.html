@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'IBM Plex Sans', sans-serif; background: #F4F5F7; padding: 0; }
+  .table { width: 100%; border-collapse: collapse; }
+  .table thead tr { background: #F4F5F7; border-bottom: 2px solid #DDE1E7; }
+  .table th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #8A95A3; padding: 6px 12px; text-align: left; }
+  .table td { font-size: 13px; color: #0D1117; padding: 0 12px; height: 36px; border-bottom: 1px solid #E8EAED; vertical-align: middle; }
+  .table tbody tr { background: white; }
+  .table tbody tr:nth-child(even) { background: #F9FAFB; }
+  .table tbody tr.priority { background: #FFFBEB; }
+  .table tbody tr.selected { background: #D6E4F5; }
+  .table tbody tr:hover td { background: #EEF2F8; }
+  .badge { display: inline-flex; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 1px 6px; border-radius: 2px; }
+  .mono { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8A95A3; }
+  .actions { display: flex; gap: 4px; }
+  .btn-xs { font-family: 'IBM Plex Sans', sans-serif; font-size: 11px; font-weight: 500; border: none; cursor: pointer; padding: 3px 8px; border-radius: 2px; }
+  .priority-flag { display: inline-flex; align-items: center; gap: 4px; }
+</style>
+</head>
+<body>
+  <table class="table">
+    <thead>
+      <tr>
+        <th style="width:16px"><input type="checkbox" style="width:12px;height:12px"></th>
+        <th>Item</th>
+        <th>Type</th>
+        <th>Author</th>
+        <th>Status</th>
+        <th>Submitted</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="priority">
+        <td><input type="checkbox" style="width:12px;height:12px"></td>
+        <td>
+          <div class="priority-flag">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="#FFB81C" stroke="#B8860B" stroke-width="1.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+            <span style="font-weight:500">CSE 442 Final Project — Group 7</span>
+          </div>
+        </td>
+        <td><span class="badge" style="background:#EEF2F8;color:#005BBB">Submission</span></td>
+        <td><span style="color:#4A5568;font-size:12px">Kim, J. · Graduate</span></td>
+        <td><span class="badge" style="background:#FFFBEB;color:#B8860B;border:1px solid #F0D080">HIGH PRI</span></td>
+        <td><span class="mono">Apr 30 · 2:14 PM</span></td>
+        <td><div class="actions">
+          <button class="btn-xs" style="background:#1A7F4B;color:white">Approve</button>
+          <button class="btn-xs" style="background:#C0392B;color:white">Reject</button>
+        </div></td>
+      </tr>
+      <tr class="selected">
+        <td><input type="checkbox" checked style="width:12px;height:12px"></td>
+        <td><span style="font-weight:500">Research Symposium Registration</span></td>
+        <td><span class="badge" style="background:#EAF5EE;color:#1A7F4B">Event</span></td>
+        <td><span style="color:#4A5568;font-size:12px">Chen, M. · Faculty</span></td>
+        <td><span class="badge" style="background:#EEF2F8;color:#005BBB">IN REVIEW</span></td>
+        <td><span class="mono">Apr 30 · 11:03 AM</span></td>
+        <td><div class="actions">
+          <button class="btn-xs" style="background:#1A7F4B;color:white">Approve</button>
+          <button class="btn-xs" style="background:#E8EAED;color:#4A5568">View</button>
+        </div></td>
+      </tr>
+      <tr>
+        <td><input type="checkbox" style="width:12px;height:12px"></td>
+        <td>Grad Admissions Appeal — Williams</td>
+        <td><span class="badge" style="background:#FDECEB;color:#C0392B">Report</span></td>
+        <td><span style="color:#4A5568;font-size:12px">Admin · Dept Office</span></td>
+        <td><span class="badge" style="background:#F4F5F7;color:#4A5568">PENDING</span></td>
+        <td><span class="mono">Apr 29 · 4:47 PM</span></td>
+        <td><div class="actions">
+          <button class="btn-xs" style="background:#1A7F4B;color:white">Approve</button>
+          <button class="btn-xs" style="background:#C0392B;color:white">Reject</button>
+        </div></td>
+      </tr>
+      <tr>
+        <td><input type="checkbox" style="width:12px;height:12px"></td>
+        <td style="color:#8A95A3">Lab Access Request — Room 214</td>
+        <td><span class="badge" style="background:#F4F5F7;color:#8A95A3">Request</span></td>
+        <td><span style="color:#8A95A3;font-size:12px">Park, S. · Undergrad</span></td>
+        <td><span class="badge" style="background:#EAF5EE;color:#1A7F4B">APPROVED</span></td>
+        <td><span class="mono">Apr 28 · 9:22 AM</span></td>
+        <td><div class="actions">
+          <button class="btn-xs" style="background:#E8EAED;color:#4A5568">View</button>
+        </div></td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>

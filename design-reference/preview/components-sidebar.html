@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'IBM Plex Sans', sans-serif; background: #F4F5F7; padding: 0; display: flex; height: 100vh; }
+  .sidebar { width: 220px; background: #0D1117; height: 100%; display: flex; flex-direction: column; flex-shrink: 0; }
+  .sidebar-header { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; gap: 10px; }
+  .sidebar-header img { width: 28px; height: 28px; }
+  .sidebar-title { font-size: 13px; font-weight: 600; color: white; line-height: 1.2; }
+  .sidebar-sub { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 0.04em; text-transform: uppercase; }
+  .nav-section { padding: 12px 0 4px; }
+  .nav-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.3); padding: 0 16px; margin-bottom: 2px; }
+  .nav-item { display: flex; align-items: center; gap: 9px; padding: 7px 16px; font-size: 13px; color: rgba(255,255,255,0.65); cursor: pointer; transition: background 0.1s; }
+  .nav-item:hover { background: rgba(255,255,255,0.06); color: white; }
+  .nav-item.active { background: #005BBB; color: white; }
+  .nav-item .count { margin-left: auto; font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.15); padding: 1px 6px; border-radius: 2px; }
+  .nav-item.active .count { background: rgba(255,255,255,0.25); }
+  .nav-item .count.alert { background: #C0392B; color: white; }
+  .nav-item .count.warn  { background: #B8860B; color: white; }
+  .sidebar-footer { margin-top: auto; padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 12px; color: rgba(255,255,255,0.4); display: flex; align-items: center; gap: 8px; }
+  .avatar { width: 24px; height: 24px; border-radius: 50%; background: #005BBB; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: white; flex-shrink: 0; }
+  .main { flex: 1; padding: 20px; overflow: auto; }
+  .top-header { background: white; border-bottom: 1px solid #DDE1E7; height: 48px; display: flex; align-items: center; padding: 0 16px; gap: 12px; font-size: 13px; color: #4A5568; }
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #8A95A3; }
+  .breadcrumb .current { color: #0D1117; font-weight: 500; }
+</style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <svg width="28" height="32" viewBox="0 0 48 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 4 L4 36 Q4 52 24 56 Q44 52 44 36 L44 4 Z" fill="#005BBB"/>
+        <path d="M10 10 L10 36 Q10 48 24 51 Q38 48 38 36 L38 10 Z" fill="white"/>
+        <text x="24" y="37" font-family="'IBM Plex Sans',Arial,sans-serif" font-size="16" font-weight="700" fill="#005BBB" text-anchor="middle">UB</text>
+      </svg>
+      <div>
+        <div class="sidebar-title">CSE Admin</div>
+        <div class="sidebar-sub">Activity Monitor</div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Overview</div>
+      <div class="nav-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Activity Feed
+        <span class="count">48</span>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Review</div>
+      <div class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Submissions
+        <span class="count alert">07</span>
+      </div>
+      <div class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Events
+        <span class="count warn">03</span>
+      </div>
+      <div class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Enrollments
+      </div>
+      <div class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        Flagged Items
+        <span class="count alert">12</span>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Reports</div>
+      <div class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Analytics
+      </div>
+      <div class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        Audit Log
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="avatar">SA</div>
+      <div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.7);font-weight:500">sys.admin</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3)">CSE Dept.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex:1;background:#F4F5F7;display:flex;align-items:center;justify-content:center">
+    <div style="font-size:12px;color:#B0B8C4;font-family:'IBM Plex Sans',sans-serif">← Sidebar navigation component</div>
+  </div>
+</body>
+</html>

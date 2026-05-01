@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UB CSE Admin — Activity Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { height: 100%; overflow: hidden; }
+  body { font-family: 'IBM Plex Sans', sans-serif; background: #F4F5F7; color: #0D1117; -webkit-font-smoothing: antialiased; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #DDE1E7; border-radius: 3px; }
+  input[type=checkbox] { accent-color: #005BBB; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="StatusBadge.jsx"></script>
+<script type="text/babel" src="Sidebar.jsx"></script>
+<script type="text/babel" src="Header.jsx"></script>
+<script type="text/babel" src="StatsPanel.jsx"></script>
+<script type="text/babel" src="ItemRow.jsx"></script>
+<script type="text/babel" src="FilterBar.jsx"></script>
+
+<script type="text/babel">
+// ─── Seed Data ────────────────────────────────────────────────────────────────
+const ALL_ITEMS = [
+  { id: 'SUB-2024-0041', title: 'CSE 442 Final Project — Group 7', type: 'Submission', author: 'Kim, J.', dept: 'Graduate', status: 'HIGH PRIORITY', timestamp: '2h ago' },
+  { id: 'RPT-2024-0019', title: 'Academic Integrity Report — CSE 531', type: 'Report', author: 'Admin', dept: 'Dept. Office', status: 'URGENT', timestamp: '45m ago' },
+  { id: 'EVT-2024-0088', title: 'Research Symposium Registration', type: 'Event', author: 'Chen, M.', dept: 'Faculty', status: 'IN REVIEW', timestamp: 'Apr 30 · 11:03 AM' },
+  { id: 'APL-2024-0012', title: 'Grad Admissions Appeal — Williams, T.', type: 'Appeal', author: 'Admin', dept: 'Dept. Office', status: 'PENDING', timestamp: 'Apr 29 · 4:47 PM' },
+  { id: 'REQ-2024-0057', title: 'Lab Access Request — Room 214B', type: 'Request', author: 'Park, S.', dept: 'Undergrad', status: 'PENDING', timestamp: 'Apr 29 · 2:00 PM' },
+  { id: 'SUB-2024-0039', title: 'CSE 531 Literature Review — Chen', type: 'Submission', author: 'Chen, L.', dept: 'Graduate', status: 'HIGH PRIORITY', timestamp: 'Apr 29 · 9:15 AM' },
+  { id: 'ENR-2024-0204', title: 'Late Enrollment Request — CSE 474', type: 'Enrollment', author: 'Patel, R.', dept: 'Undergrad', status: 'PENDING', timestamp: 'Apr 28 · 3:31 PM' },
+  { id: 'EVT-2024-0085', title: 'Dept. Colloquium — Speaker Booking', type: 'Event', author: 'Okonkwo, F.', dept: 'Faculty', status: 'APPROVED', timestamp: 'Apr 28 · 1:10 PM' },
+  { id: 'SUB-2024-0036', title: 'CSE 486 Capstone Report', type: 'Submission', author: 'Torres, A.', dept: 'Undergrad', status: 'APPROVED', timestamp: 'Apr 27 · 5:44 PM' },
+  { id: 'REQ-2024-0053', title: 'Server Access — GPU Cluster', type: 'Request', author: 'Yao, B.', dept: 'Graduate', status: 'REJECTED', timestamp: 'Apr 27 · 11:00 AM' },
+  { id: 'APL-2024-0010', title: 'Incomplete Grade Appeal — CSE 341', type: 'Appeal', author: 'Admin', dept: 'Dept. Office', status: 'PENDING', timestamp: 'Apr 26 · 2:50 PM' },
+  { id: 'RPT-2024-0018', title: 'Facilities Issue — Lab 105 HVAC', type: 'Report', author: 'Singh, P.', dept: 'Faculty', status: 'CLOSED', timestamp: 'Apr 25 · 9:00 AM' },
+];
+
+const ACTIVITY_LOG = [
+  { id: 1, action: 'Approved', item: 'CSE 486 Capstone Report', actor: 'sys.admin', time: 'Apr 27 · 5:44 PM', type: 'approve' },
+  { id: 2, action: 'Rejected', item: 'Server Access — GPU Cluster', actor: 'sys.admin', time: 'Apr 27 · 11:00 AM', type: 'reject' },
+  { id: 3, action: 'Flagged HIGH PRIORITY', item: 'CSE 531 Literature Review', actor: 'sys.admin', time: 'Apr 29 · 9:15 AM', type: 'flag' },
+  { id: 4, action: 'Submitted for review', item: 'Research Symposium Registration', actor: 'Chen, M.', time: 'Apr 30 · 11:03 AM', type: 'submit' },
+  { id: 5, action: 'Escalated', item: 'Academic Integrity Report — CSE 531', actor: 'sys.admin', time: '45m ago', type: 'reject' },
+  { id: 6, action: 'Approved', item: 'Dept. Colloquium — Speaker Booking', actor: 'sys.admin', time: 'Apr 28 · 1:10 PM', type: 'approve' },
+];
+
+// ─── Detail Panel ─────────────────────────────────────────────────────────────
+const DetailPanel = ({ item, onClose, onApprove, onReject }) => {
+  if (!item) return null;
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(13,17,23,0.45)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end' }}
+      onClick={onClose}>
+      <div style={{ width: 480, height: '100%', background: 'white', boxShadow: '-4px 0 24px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}
+        onClick={e => e.stopPropagation()}>
+        {/* Panel header */}
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid #DDE1E7', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8A95A3', display: 'flex', alignItems: 'center', padding: 4 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8A95A3' }}>Item Detail</div>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#B0B8C4' }}>{item.id}</div>
+          </div>
+          <StatusBadge status={item.status} />
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: '16px', flex: 1 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, color: '#0D1117', marginBottom: 12, lineHeight: 1.4 }}>{item.title}</h2>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', marginBottom: 16 }}>
+            {[
+              ['Type', <TypeBadge type={item.type} />],
+              ['Author', item.author],
+              ['Department', item.dept],
+              ['Submitted', item.timestamp],
+            ].map(([label, val]) => (
+              <div key={label}>
+                <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8A95A3', marginBottom: 3 }}>{label}</div>
+                <div style={{ fontSize: 13, color: '#0D1117' }}>{val}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ background: '#F4F5F7', border: '1px solid #E8EAED', borderRadius: 4, padding: '12px', marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8A95A3', marginBottom: 6 }}>Submission Notes</div>
+            <p style={{ fontSize: 13, color: '#4A5568', lineHeight: 1.6 }}>
+              This is a placeholder for item-specific notes, attached documents, and reviewer annotations. The actual content would be fetched from the CSE admin backend.
+            </p>
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8A95A3', marginBottom: 6 }}>Review History</div>
+            {[
+              { actor: 'sys.admin', action: 'Item submitted for review', time: item.timestamp, color: '#8A95A3' },
+              { actor: 'sys.admin', action: 'Status set to ' + item.status, time: '1h ago', color: '#005BBB' },
+            ].map((log, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '5px 0', borderBottom: '1px solid #F4F5F7', fontSize: 12 }}>
+                <span style={{ fontWeight: 600, color: '#0D1117' }}>{log.actor}</span>
+                <span style={{ color: '#4A5568', flex: 1 }}>{log.action}</span>
+                <span style={{ fontFamily: "'IBM Plex Mono',monospace", color: '#B0B8C4', flexShrink: 0, fontSize: 11 }}>{log.time}</span>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8A95A3', marginBottom: 6 }}>Add Note</div>
+            <textarea style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 13, width: '100%', height: 72, border: '1px solid #DDE1E7', borderRadius: 4, padding: '8px 10px', resize: 'none', outline: 'none', color: '#0D1117', background: 'white' }} placeholder="Enter review notes…"></textarea>
+          </div>
+        </div>
+
+        {/* Footer actions */}
+        <div style={{ padding: '12px 16px', borderTop: '1px solid #DDE1E7', display: 'flex', gap: 8, background: '#F9FAFB' }}>
+          <button onClick={() => { onApprove(item.id); onClose(); }} style={{ flex: 1, fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 13, fontWeight: 600, background: '#1A7F4B', color: 'white', border: 'none', borderRadius: 4, height: 36, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Approve
+          </button>
+          <button onClick={() => { onReject(item.id); onClose(); }} style={{ flex: 1, fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 13, fontWeight: 600, background: '#C0392B', color: 'white', border: 'none', borderRadius: 4, height: 36, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Reject
+          </button>
+          <button style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 13, fontWeight: 500, background: '#FFFBEB', color: '#B8860B', border: '1px solid #F0D080', borderRadius: 4, height: 36, padding: '0 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+            Flag
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Table Header ─────────────────────────────────────────────────────────────
+const TableHeader = ({ onSelectAll, allSelected }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 12px', height: 32, background: '#F4F5F7', borderBottom: '2px solid #DDE1E7' }}>
+    <input type="checkbox" checked={allSelected} onChange={onSelectAll} style={{ width: 12, height: 12, accentColor: '#005BBB', flexShrink: 0 }} />
+    <div style={{ flexShrink: 0, width: 13 }}></div>
+    <span style={{ flex: 1, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8A95A3' }}>Item</span>
+    <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8A95A3', width: 80, flexShrink: 0 }}>Type</span>
+    <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8A95A3', width: 80, flexShrink: 0 }}>Status</span>
+    <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8A95A3', width: 80, textAlign: 'right', flexShrink: 0 }}>Date</span>
+    <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8A95A3', width: 130, flexShrink: 0 }}>Actions</span>
+  </div>
+);
+
+// ─── Dashboard Screen ─────────────────────────────────────────────────────────
+const DashboardScreen = ({ items, onView, onApprove, onReject }) => {
+  const priority = items.filter(i => i.status === 'HIGH PRIORITY' || i.status === 'URGENT');
+  const pending  = items.filter(i => i.status === 'PENDING' || i.status === 'IN REVIEW');
+
+  return (
+    <div style={{ flex: 1, overflow: 'auto' }}>
+      <StatsPanel />
+
+      {/* Priority Queue */}
+      <div style={{ margin: '16px 16px 0', background: 'white', border: '1px solid #DDE1E7', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ padding: '8px 12px', background: '#FFFBEB', borderBottom: '1px solid #F0D080', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#FFB81C" stroke="#B8860B" strokeWidth="1.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#B8860B' }}>Priority Queue</span>
+          <CountBadge count={priority.length} variant="warn" />
+        </div>
+        {priority.map(item => (
+          <ItemRow key={item.id} item={item} onView={onView} onApprove={onApprove} onReject={onReject} compact />
+        ))}
+        {priority.length === 0 && (
+          <div style={{ padding: '12px', fontSize: 13, color: '#8A95A3', textAlign: 'center' }}>No priority items.</div>
+        )}
+      </div>
+
+      {/* Pending Review */}
+      <div style={{ margin: '12px 16px 16px', background: 'white', border: '1px solid #DDE1E7', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ padding: '8px 12px', background: '#F9FAFB', borderBottom: '1px solid #DDE1E7', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A95A3" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#4A5568' }}>Pending Review</span>
+          <CountBadge count={pending.length} variant="primary" />
+        </div>
+        {pending.map(item => (
+          <ItemRow key={item.id} item={item} onView={onView} onApprove={onApprove} onReject={onReject} compact />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─── Submissions Screen ────────────────────────────────────────────────────────
+const SubmissionsScreen = ({ items, selectedIds, onSelect, onSelectAll, onView, onApprove, onReject, onBulkApprove }) => {
+  const [search, setSearch] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState('all');
+  const [typeFilter, setTypeFilter] = React.useState('all');
+
+  const filtered = items.filter(item => {
+    const matchSearch = !search || item.title.toLowerCase().includes(search.toLowerCase()) || item.author.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === 'all' || item.status === statusFilter;
+    const matchType   = typeFilter   === 'all' || item.type   === typeFilter;
+    return matchSearch && matchStatus && matchType;
+  });
+
+  const allSelected = filtered.length > 0 && filtered.every(i => selectedIds.includes(i.id));
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <FilterBar
+        search={search} onSearch={setSearch}
+        statusFilter={statusFilter} onStatusFilter={setStatusFilter}
+        typeFilter={typeFilter} onTypeFilter={setTypeFilter}
+        selectedCount={selectedIds.length}
+        onBulkApprove={onBulkApprove}
+      />
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <TableHeader allSelected={allSelected} onSelectAll={() => onSelectAll(filtered.map(i => i.id))} />
+        {filtered.map(item => (
+          <ItemRow
+            key={item.id} item={item}
+            isSelected={selectedIds.includes(item.id)}
+            onSelect={onSelect} onView={onView} onApprove={onApprove} onReject={onReject}
+          />
+        ))}
+        {filtered.length === 0 && (
+          <div style={{ padding: '32px', textAlign: 'center', color: '#8A95A3', fontSize: 13 }}>No items match your filters.</div>
+        )}
+        <div style={{ padding: '8px 12px', fontSize: 11, color: '#8A95A3', borderTop: '1px solid #E8EAED', background: '#F9FAFB' }}>
+          Showing {filtered.length} of {items.length} items
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Activity Feed Screen ──────────────────────────────────────────────────────
+const ActivityFeedScreen = ({ items, onView }) => {
+  const actionColors = { approve: '#1A7F4B', reject: '#C0392B', flag: '#B8860B', submit: '#005BBB' };
+  const actionIcons = {
+    approve: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>,
+    reject:  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+    flag:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>,
+    submit:  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+  };
+
+  return (
+    <div style={{ flex: 1, overflow: 'auto' }}>
+      <div style={{ margin: '16px', background: 'white', border: '1px solid #DDE1E7', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ padding: '8px 12px', background: '#F9FAFB', borderBottom: '1px solid #DDE1E7', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#4A5568' }}>Recent Activity</span>
+          <CountBadge count={ACTIVITY_LOG.length} variant="default" />
+        </div>
+        {ACTIVITY_LOG.map(log => (
+          <div key={log.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderBottom: '1px solid #F4F5F7' }}>
+            <div style={{ width: 24, height: 24, borderRadius: '50%', background: actionColors[log.type] + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', color: actionColors[log.type], flexShrink: 0 }}>
+              {actionIcons[log.type]}
+            </div>
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#0D1117' }}>{log.actor} </span>
+              <span style={{ fontSize: 13, color: '#4A5568' }}>{log.action} — </span>
+              <span style={{ fontSize: 13, color: '#005BBB', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => { const item = items.find(i => i.title.startsWith(log.item.split(' — ')[0])); if (item) onView(item); }}>{log.item}</span>
+            </div>
+            <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: '#8A95A3', flexShrink: 0 }}>{log.time}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* All items feed */}
+      <div style={{ margin: '0 16px 16px', background: 'white', border: '1px solid #DDE1E7', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ padding: '8px 12px', background: '#F9FAFB', borderBottom: '1px solid #DDE1E7' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#4A5568' }}>All Items</span>
+        </div>
+        {items.map(item => (
+          <ItemRow key={item.id} item={item} onView={onView} compact />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─── Placeholder Screen ────────────────────────────────────────────────────────
+const PlaceholderScreen = ({ title }) => (
+  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 10, color: '#B0B8C4' }}>
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    <div style={{ fontSize: 13, fontWeight: 500 }}>{title}</div>
+    <div style={{ fontSize: 12 }}>Screen not yet implemented in this prototype</div>
+  </div>
+);
+
+// ─── Root App ─────────────────────────────────────────────────────────────────
+const App = () => {
+  const [activeId, setActiveId]     = React.useState('dashboard');
+  const [items, setItems]           = React.useState(ALL_ITEMS);
+  const [selectedIds, setSelected]  = React.useState([]);
+  const [detailItem, setDetailItem] = React.useState(null);
+  const [search, setSearch]         = React.useState('');
+
+  const handleApprove = (id) => setItems(prev => prev.map(i => i.id === id ? { ...i, status: 'APPROVED' } : i));
+  const handleReject  = (id) => setItems(prev => prev.map(i => i.id === id ? { ...i, status: 'REJECTED' } : i));
+  const handleSelect  = (id) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const handleSelectAll = (ids) => setSelected(prev => ids.every(id => prev.includes(id)) ? prev.filter(id => !ids.includes(id)) : [...new Set([...prev, ...ids])]);
+  const handleBulkApprove = () => { selectedIds.forEach(id => handleApprove(id)); setSelected([]); };
+
+  const screenItems = activeId === 'flagged'
+    ? items.filter(i => i.status === 'HIGH PRIORITY' || i.status === 'URGENT')
+    : activeId === 'events'
+    ? items.filter(i => i.type === 'Event')
+    : activeId === 'enrollments'
+    ? items.filter(i => i.type === 'Enrollment')
+    : items;
+
+  const renderScreen = () => {
+    switch (activeId) {
+      case 'dashboard':   return <DashboardScreen items={items} onView={setDetailItem} onApprove={handleApprove} onReject={handleReject} />;
+      case 'activity':    return <ActivityFeedScreen items={items} onView={setDetailItem} />;
+      case 'submissions': return <SubmissionsScreen items={items} selectedIds={selectedIds} onSelect={handleSelect} onSelectAll={handleSelectAll} onView={setDetailItem} onApprove={handleApprove} onReject={handleReject} onBulkApprove={handleBulkApprove} />;
+      case 'flagged':
+      case 'events':
+      case 'enrollments': return <SubmissionsScreen items={screenItems} selectedIds={selectedIds} onSelect={handleSelect} onSelectAll={handleSelectAll} onView={setDetailItem} onApprove={handleApprove} onReject={handleReject} onBulkApprove={handleBulkApprove} />;
+      default:            return <PlaceholderScreen title={activeId.charAt(0).toUpperCase() + activeId.slice(1)} />;
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <Sidebar activeId={activeId} onNavigate={id => { setActiveId(id); setSelected([]); }} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <Header activeId={activeId} searchValue={search} onSearch={setSearch} />
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {renderScreen()}
+        </div>
+      </div>
+      {detailItem && (
+        <DetailPanel item={detailItem} onClose={() => setDetailItem(null)} onApprove={handleApprove} onReject={handleReject} />
+      )}
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

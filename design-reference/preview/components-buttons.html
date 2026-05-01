@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'IBM Plex Sans', sans-serif; background: #F4F5F7; padding: 16px; }
+  .label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #8A95A3; margin-bottom: 10px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  button { font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; font-weight: 500; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; height: 32px; border-radius: 4px; transition: background 0.1s; }
+  .btn-primary   { background: #005BBB; color: white; }
+  .btn-approve   { background: #1A7F4B; color: white; }
+  .btn-reject    { background: #C0392B; color: white; }
+  .btn-ghost     { background: transparent; color: #005BBB; border: 1px solid #005BBB; }
+  .btn-secondary { background: #E8EAED; color: #0D1117; }
+  .btn-danger-ghost { background: transparent; color: #C0392B; border: 1px solid #C0392B; }
+  .btn-sm { height: 26px; font-size: 12px; padding: 0 10px; }
+  .btn-icon { width: 32px; padding: 0; justify-content: center; background: #E8EAED; color: #4A5568; border-radius: 4px; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+  <div class="label">Primary Actions</div>
+  <div class="row">
+    <button class="btn-primary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Approve
+    </button>
+    <button class="btn-reject">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      Reject
+    </button>
+    <button class="btn-approve">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Approve All
+    </button>
+    <button class="btn-primary">Review</button>
+    <button class="btn-secondary">Cancel</button>
+    <button class="btn-ghost">Export</button>
+    <button class="btn-danger-ghost">Delete</button>
+  </div>
+  <div class="label">Compact (SM)</div>
+  <div class="row">
+    <button class="btn-primary btn-sm">Approve</button>
+    <button class="btn-reject btn-sm">Reject</button>
+    <button class="btn-secondary btn-sm">View</button>
+    <button class="btn-ghost btn-sm">Flag</button>
+    <button class="btn-icon btn-sm">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
+    <button class="btn-icon btn-sm" style="background:#FFFBEB;color:#B8860B;border:1px solid #F0D080">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+    </button>
+  </div>
+  <div class="label">Disabled State</div>
+  <div class="row">
+    <button class="btn-primary" style="opacity:0.4;cursor:not-allowed">Approve</button>
+    <button class="btn-reject" style="opacity:0.4;cursor:not-allowed">Reject</button>
+    <button class="btn-secondary" style="opacity:0.4;cursor:not-allowed">Cancel</button>
+  </div>
+</body>
+</html>

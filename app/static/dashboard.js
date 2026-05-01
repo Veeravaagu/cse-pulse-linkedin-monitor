@@ -118,7 +118,8 @@ function formatReviewLabel(label) {
 }
 
 function createReviewBadge(activity) {
-  return createBadge(`Review ${formatReviewLabel(deriveReviewLabel(activity))}`, "review-chip");
+  const reviewStatus = deriveReviewLabel(activity);
+  return createBadge(`Review ${formatReviewLabel(reviewStatus)}`, `review-chip review-${reviewStatus}`);
 }
 
 function activitySearchBlob(activity) {
@@ -265,6 +266,7 @@ function createActivityCard(activity) {
   const activityLabel = safeText(activity.faculty_name) || "General CSE activity";
   const summary = safeText(activity.ai_summary);
   const isSelected = state.selectedActivityIds.has(activity.id);
+  const priorityRowClass = activity.priority >= 5 ? "priority-row-high" : activity.priority >= 4 ? "priority-row-medium" : "";
   const selected = isSelected ? "checked" : "";
   const selectControl = isActionableTab()
     ? `
@@ -302,7 +304,7 @@ function createActivityCard(activity) {
   }
 
   return `
-    <article class="inbox-item ${isSelected ? "is-selected" : ""}" data-activity-id="${activity.id}">
+    <article class="inbox-item ${priorityRowClass} ${isSelected ? "is-selected" : ""}" data-activity-id="${activity.id}">
       <div class="inbox-item-header">
         ${selectControl}
         <h3 class="item-title" title="${activityLabel}">${activityLabel}</h3>
@@ -379,25 +381,36 @@ function renderSpotlight() {
     .join("");
 }
 
-function buildChartRows(labelValuePairs, className) {
-  const max = Math.max(...labelValuePairs.map((item) => item.value), 1);
-  return `
-    <div class="${className}">
-      ${labelValuePairs
-        .map(
-          (item) => `
-            <div class="${className === "timeline-bars" ? "timeline-row" : "chart-row"}">
-              <span>${item.label}</span>
-              <div class="${className === "timeline-bars" ? "timeline-track" : "chart-track"}">
-                <div class="${className === "timeline-bars" ? "timeline-fill" : "chart-fill"}" style="width: ${(item.value / max) * 100}%"></div>
-              </div>
-              <strong>${item.value}</strong>
-            </div>
-          `,
-        )
-        .join("")}
-    </div>
-  `;
+function formatShortDayLabel(isoDate) {
+  const parsed = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return isoDate;
+  }
+  return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function isoDay(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function buildCompactMixRows(rows, total, colorMap) {
+  return rows
+    .map((item) => {
+      const share = total > 0 ? (item.value / total) * 100 : 0;
+      const color = colorMap[item.label] || "#005bbb";
+      return `
+        <div class="mix-row">
+          <div class="mix-label-line">
+            <span class="mix-label"><i class="mix-dot" style="--dot:${color}"></i>${item.label}</span>
+            <span class="mix-value">${item.value} • ${Math.round(share)}%</span>
+          </div>
+          <div class="mix-track">
+            <div class="mix-fill" style="--fill:${color};width:${share.toFixed(2)}%"></div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
 }
 
 function renderCharts() {
@@ -430,18 +443,82 @@ function renderCharts() {
     .map(([label, value]) => ({ label, value }));
 
   const priorityRows = Object.entries(priorityCounts).map(([label, value]) => ({ label, value }));
+  const total = activities.length;
+  const categoryPalette = ["#005bbb", "#1c7c54", "#bf6f00", "#6b7280"];
+  const categoryColorMap = categoryRows.reduce((acc, item, index) => {
+    acc[item.label] = categoryPalette[index % categoryPalette.length];
+    return acc;
+  }, {});
+  const priorityColors = {
+    "Priority 5": "#bf6f00",
+    "Priority 4": "#005bbb",
+    "Priority 1-3": "#6b7280",
+  };
+  const topCategory = categoryRows[0];
+  const priorityHighCount = activities.filter((activity) => activity.priority >= 5).length;
+  const recentWeekCount = activities.filter((activity) => {
+    const ts = new Date(activity.detected_at).getTime();
+    if (Number.isNaN(ts)) {
+      return false;
+    }
+    return Date.now() - ts <= 7 * 24 * 60 * 60 * 1000;
+  }).length;
 
   charts.className = "charts-grid";
   charts.innerHTML = `
-    <article class="chart-card">
-      <h4>Category mix</h4>
-      ${buildChartRows(categoryRows, "chart-bars")}
+    <article class="chart-card summary-card">
+      <h4>At a glance</h4>
+      <div class="insight-stats">
+        <div class="insight-stat">
+          <span class="insight-stat-label">Visible activities</span>
+          <strong class="insight-stat-value">${total}</strong>
+        </div>
+        <div class="insight-stat">
+          <span class="insight-stat-label">Top category</span>
+          <strong class="insight-stat-value">${topCategory ? topCategory.label : "n/a"}</strong>
+        </div>
+        <div class="insight-stat">
+          <span class="insight-stat-label">Priority 5 count</span>
+          <strong class="insight-stat-value">${priorityHighCount}</strong>
+        </div>
+        <div class="insight-stat">
+          <span class="insight-stat-label">Last 7 days</span>
+          <strong class="insight-stat-value">${recentWeekCount}</strong>
+        </div>
+      </div>
     </article>
-    <article class="chart-card">
+    <article class="chart-card compact-mix-card">
+      <h4>Category mix</h4>
+      <div class="mix-grid" role="img" aria-label="Category distribution">
+        ${buildCompactMixRows(categoryRows, total, categoryColorMap)}
+      </div>
+    </article>
+    <article class="chart-card compact-mix-card">
       <h4>Priority mix</h4>
-      ${buildChartRows(priorityRows, "chart-bars")}
+      <div class="mix-grid" role="img" aria-label="Priority distribution">
+        ${buildCompactMixRows(priorityRows, total, priorityColors)}
+      </div>
     </article>
   `;
+}
+
+function buildSevenDayRows(activities) {
+  const countsByDay = {};
+  activities.forEach((activity) => {
+    const day = activity.detected_at.slice(0, 10);
+    countsByDay[day] = (countsByDay[day] || 0) + 1;
+  });
+
+  const allDays = Object.keys(countsByDay).sort((a, b) => a.localeCompare(b));
+  const end = allDays.length ? new Date(`${allDays[allDays.length - 1]}T00:00:00`) : new Date();
+  const rows = [];
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const day = new Date(end);
+    day.setDate(end.getDate() - offset);
+    const key = isoDay(day);
+    rows.push({ label: key, value: countsByDay[key] || 0 });
+  }
+  return rows;
 }
 
 function renderTimeline() {
@@ -454,19 +531,37 @@ function renderTimeline() {
     return;
   }
 
-  const countsByDay = {};
-  activities.forEach((activity) => {
-    const day = activity.detected_at.slice(0, 10);
-    countsByDay[day] = (countsByDay[day] || 0) + 1;
-  });
-
-  const rows = Object.entries(countsByDay)
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .slice(-7)
-    .map(([label, value]) => ({ label, value }));
+  const rows = buildSevenDayRows(activities);
+  const max = Math.max(...rows.map((item) => item.value), 1);
+  const trendTotal = rows.reduce((sum, item) => sum + item.value, 0);
 
   container.className = "timeline-chart";
-  container.innerHTML = buildChartRows(rows, "timeline-bars");
+  container.innerHTML = `
+    <article class="chart-card trend-card">
+      <div class="trend-header">
+        <h4>7-day activity trend</h4>
+        <span class="trend-total">${trendTotal} items</span>
+      </div>
+      <div class="trend-bars" role="img" aria-label="Detected activity by day">
+        ${rows
+          .map((item) => {
+            const height = (item.value / max) * 100;
+            const barHeight = item.value === 0 ? 0 : Math.max(10, height);
+            return `
+              <div class="trend-day">
+                <div class="trend-column-wrap ${item.value === 0 ? "is-zero-day" : ""}">
+                  <div class="trend-column ${item.value === 0 ? "is-zero" : ""}" style="height:${barHeight.toFixed(2)}%"></div>
+                </div>
+                <span class="trend-value">${item.value}</span>
+                <span class="trend-label">${formatShortDayLabel(item.label)}</span>
+              </div>
+            `;
+          })
+          .join("")}
+        </div>
+      </div>
+    </article>
+  `;
 }
 
 function renderDigestWorkspace() {

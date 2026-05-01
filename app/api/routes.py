@@ -160,7 +160,13 @@ def require_main_dashboard_api_key(request: Request) -> None:
 
 
 def _render_login_page(error: str = "", status_code: int = 200) -> HTMLResponse:
-    error_markup = f'<p style="color:#b42318;margin:0 0 12px 0;">{error}</p>' if error else ""
+    error_markup = (
+        '<p style="margin:0;padding:10px 12px;border:1px solid #f3b7bd;border-radius:10px;'
+        'background:#fff1f3;color:#b42318;font-size:14px;line-height:1.4;">'
+        f"{error}</p>"
+        if error
+        else ""
+    )
     html = f"""<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -168,21 +174,40 @@ def _render_login_page(error: str = "", status_code: int = 200) -> HTMLResponse:
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Login</title>
   </head>
-  <body style="font-family: sans-serif; background: #f6f7fb; margin: 0; padding: 32px;">
-    <main style="max-width: 360px; margin: 0 auto; background: #fff; border: 1px solid #d8dce6; border-radius: 8px; padding: 20px;">
-      <h1 style="margin: 0 0 10px 0; font-size: 22px;">Admin Login</h1>
-      <p style="margin: 0 0 16px 0; color: #475467;">Sign in to access the admin dashboard.</p>
+  <body style="margin:0;min-height:100vh;display:grid;place-items:center;padding:clamp(12px,3vw,20px);background:linear-gradient(180deg,#f8fafc 0%,#eef2f7 100%);font-family:'Avenir Next','Segoe UI',sans-serif;color:#0f172a;">
+    <main style="width:min(100%,400px);background:#ffffff;border:1px solid #e2e8f0;border-radius:clamp(10px,2.4vw,14px);padding:clamp(16px,4.2vw,24px);box-shadow:0 14px 34px rgba(15,23,42,0.08);">
+      <h1 style="margin:0 0 8px 0;font-size:clamp(1.75rem,6vw,2rem);line-height:1.12;letter-spacing:-0.02em;">Admin Login</h1>
+      <p style="margin:0 0 18px 0;color:#475467;font-size:clamp(0.92rem,3.4vw,1rem);line-height:1.5;">Sign in to access the admin dashboard.</p>
       {error_markup}
-      <form method="post" action="/login" style="display: grid; gap: 12px;">
-        <label style="display:grid; gap:6px;">
-          <span>Username</span>
-          <input type="text" name="username" required />
+      <form method="post" action="/login" style="display:grid;gap:clamp(10px,2.8vw,14px);margin-top:14px;">
+        <label style="display:grid;gap:6px;">
+          <span style="font-size:clamp(0.76rem,2.8vw,0.82rem);font-weight:600;color:#1f2937;">Username</span>
+          <input
+            type="text"
+            name="username"
+            placeholder="Enter your username"
+            autocomplete="username"
+            required
+            style="height:clamp(40px,10vw,44px);padding:0 12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#0f172a;font-size:clamp(0.94rem,3.5vw,1rem);outline:none;"
+          />
         </label>
-        <label style="display:grid; gap:6px;">
-          <span>Password</span>
-          <input type="password" name="password" required />
+        <label style="display:grid;gap:6px;">
+          <span style="font-size:clamp(0.76rem,2.8vw,0.82rem);font-weight:600;color:#1f2937;">Password</span>
+          <input
+            type="password"
+            name="password"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+            required
+            style="height:clamp(40px,10vw,44px);padding:0 12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#0f172a;font-size:clamp(0.94rem,3.5vw,1rem);outline:none;"
+          />
         </label>
-        <button type="submit">Sign in</button>
+        <button
+          type="submit"
+          style="height:clamp(42px,10vw,46px);border:0;border-radius:10px;background:linear-gradient(135deg,#1d4ed8,#1e3a8a);color:#fff;font-size:clamp(0.96rem,3.6vw,1rem);font-weight:600;cursor:pointer;"
+        >
+          Sign in
+        </button>
       </form>
     </main>
   </body>

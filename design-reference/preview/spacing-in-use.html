@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'IBM Plex Sans', sans-serif; background: #F4F5F7; padding: 16px; display: flex; gap: 16px; flex-wrap: wrap; }
+  .group { flex: 1; min-width: 220px; }
+  .label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #8A95A3; margin-bottom: 8px; }
+  .shadow-box { background: white; border-radius: 4px; padding: 12px 14px; margin-bottom: 8px; font-size: 12px; color: #4A5568; }
+  .radius-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .rchip { background: white; border: 1px solid #DDE1E7; width: 48px; height: 32px; display: flex; align-items: center; justify-content: center; }
+  .rtag { font-size: 10px; color: #8A95A3; margin-top: 3px; text-align: center; font-family: 'IBM Plex Mono', monospace; }
+  .rbox { display: flex; flex-direction: column; align-items: center; }
+</style>
+</head>
+<body>
+  <div class="group">
+    <div class="label">Shadows / Elevation</div>
+    <div class="shadow-box" style="box-shadow:none; border:1px solid #DDE1E7">shadow-none — table rows, inline elements</div>
+    <div class="shadow-box" style="box-shadow:0 1px 3px rgba(0,0,0,0.06); border:1px solid #DDE1E7">shadow-sm — panel borders</div>
+    <div class="shadow-box" style="box-shadow:0 2px 8px rgba(0,0,0,0.08)">shadow-md — floating panels, cards</div>
+    <div class="shadow-box" style="box-shadow:0 4px 16px rgba(0,0,0,0.12)">shadow-lg — modals, dropdowns</div>
+    <div class="shadow-box" style="box-shadow:0 0 0 3px rgba(0,91,187,0.25); border:1px solid #005BBB">shadow-focus — keyboard focus ring</div>
+  </div>
+  <div class="group">
+    <div class="label">Border Radius</div>
+    <div class="radius-row">
+      <div class="rbox"><div class="rchip" style="border-radius:0px"></div><div class="rtag">0px</div><div style="font-size:10px;color:#8A95A3;text-align:center">rows</div></div>
+      <div class="rbox"><div class="rchip" style="border-radius:2px"></div><div class="rtag">2px</div><div style="font-size:10px;color:#8A95A3;text-align:center">badges</div></div>
+      <div class="rbox"><div class="rchip" style="border-radius:4px"></div><div class="rtag">4px</div><div style="font-size:10px;color:#8A95A3;text-align:center">panels</div></div>
+      <div class="rbox"><div class="rchip" style="border-radius:6px"></div><div class="rtag">6px</div><div style="font-size:10px;color:#8A95A3;text-align:center">dialogs</div></div>
+      <div class="rbox"><div class="rchip" style="border-radius:999px"></div><div class="rtag">full</div><div style="font-size:10px;color:#8A95A3;text-align:center">pills</div></div>
+    </div>
+  </div>
+</body>
+</html>

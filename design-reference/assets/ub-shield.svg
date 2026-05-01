@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" fill="none">
+  <path d="M4 4 L4 36 Q4 52 24 56 Q44 52 44 36 L44 4 Z" fill="#005BBB"></path>
+  <path d="M10 10 L10 36 Q10 48 24 51 Q38 48 38 36 L38 10 Z" fill="white"></path>
+  <text x="24" y="37" font-family="&#39;IBM Plex Sans&#39;,Arial,sans-serif" font-size="16" font-weight="700" fill="#005BBB" text-anchor="middle">UB</text>
+</svg>

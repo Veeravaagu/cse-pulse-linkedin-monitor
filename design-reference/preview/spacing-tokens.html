@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'IBM Plex Sans', sans-serif; background: #F4F5F7; padding: 16px; }
+  .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 12px; }
+  .token { background: white; border: 1px solid #DDE1E7; border-radius: 4px; padding: 8px 6px; text-align: center; }
+  .bar  { background: #005BBB; border-radius: 2px; margin: 0 auto 5px; height: 8px; }
+  .val  { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #005BBB; font-weight: 500; }
+  .name { font-size: 10px; color: #8A95A3; margin-top: 1px; }
+  .label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #8A95A3; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+  <div class="label">Spacing Tokens (4px base)</div>
+  <div class="grid">
+    <div class="token"><div class="bar" style="width:4px"></div><div class="val">4px</div><div class="name">space-1</div></div>
+    <div class="token"><div class="bar" style="width:8px"></div><div class="val">8px</div><div class="name">space-2</div></div>
+    <div class="token"><div class="bar" style="width:12px"></div><div class="val">12px</div><div class="name">space-3</div></div>
+    <div class="token"><div class="bar" style="width:16px"></div><div class="val">16px</div><div class="name">space-4</div></div>
+    <div class="token"><div class="bar" style="width:20px"></div><div class="val">20px</div><div class="name">space-5</div></div>
+    <div class="token"><div class="bar" style="width:24px"></div><div class="val">24px</div><div class="name">space-6</div></div>
+    <div class="token"><div class="bar" style="width:32px"></div><div class="val">32px</div><div class="name">space-8</div></div>
+    <div class="token"><div class="bar" style="width:40px"></div><div class="val">40px</div><div class="name">space-10</div></div>
+    <div class="token"><div class="bar" style="width:48px"></div><div class="val">48px</div><div class="name">space-12</div></div>
+    <div class="token"><div class="bar" style="width:64px;max-width:100%"></div><div class="val">64px</div><div class="name">space-16</div></div>
+    <div class="token" style="grid-column:span 2; text-align:left; padding:8px 10px;">
+      <div style="font-size:10px;color:#4A5568;line-height:1.6">
+        <div><span style="font-family:'IBM Plex Mono',monospace;color:#005BBB">36px</span> — compact row height</div>
+        <div><span style="font-family:'IBM Plex Mono',monospace;color:#005BBB">44px</span> — default row height</div>
+        <div><span style="font-family:'IBM Plex Mono',monospace;color:#005BBB">48px</span> — header height</div>
+        <div><span style="font-family:'IBM Plex Mono',monospace;color:#005BBB">220px</span> — sidebar width</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

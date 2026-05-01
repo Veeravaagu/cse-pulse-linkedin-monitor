@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'IBM Plex Sans', sans-serif; background: #F4F5F7; padding: 16px; display: flex; gap: 16px; flex-wrap: wrap; }
+  .col { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 8px; }
+  .label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #8A95A3; margin-bottom: 2px; }
+  .input-wrap { position: relative; }
+  input, select, textarea {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    color: #0D1117;
+    background: white;
+    border: 1px solid #DDE1E7;
+    border-radius: 4px;
+    padding: 0 10px;
+    height: 32px;
+    width: 100%;
+    outline: none;
+  }
+  input::placeholder { color: #B0B8C4; }
+  input.focus { border-color: #005BBB; box-shadow: 0 0 0 3px rgba(0,91,187,0.2); }
+  input.error { border-color: #C0392B; }
+  select { appearance: none; padding-right: 28px; cursor: pointer; }
+  .icon-left { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: #8A95A3; pointer-events: none; }
+  .search-input { padding-left: 30px; }
+</style>
+</head>
+<body>
+  <div class="col">
+    <div class="label">Text Inputs</div>
+    <input type="text" placeholder="Search submissions…" value="">
+    <div class="input-wrap">
+      <svg class="icon-left" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="search-input" type="text" placeholder="Search by name, ID…">
+    </div>
+    <input class="focus" type="text" value="CSE 442 Final Report" placeholder="">
+    <input class="error" type="text" value="Invalid entry" placeholder="">
+    <input type="text" placeholder="Disabled" disabled style="opacity:0.5;cursor:not-allowed">
+  </div>
+  <div class="col">
+    <div class="label">Select / Dropdown</div>
+    <div class="input-wrap">
+      <select>
+        <option>All Departments</option>
+        <option>CSE Undergrad</option>
+        <option>CSE Graduate</option>
+      </select>
+      <svg style="position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:#8A95A3" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="input-wrap">
+      <select>
+        <option>Status: All</option>
+        <option>Pending</option>
+        <option>Approved</option>
+        <option>Rejected</option>
+      </select>
+      <svg style="position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:#8A95A3" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="input-wrap">
+      <select>
+        <option>Date: Newest</option>
+        <option>Date: Oldest</option>
+        <option>Priority: High</option>
+      </select>
+      <svg style="position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:#8A95A3" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+  </div>
+</body>
+</html>

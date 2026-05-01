@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'IBM Plex Sans', sans-serif; background: #F4F5F7; padding: 16px; }
+  .label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #8A95A3; margin-bottom: 8px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 2px; }
+  .count { display: inline-flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500; min-width: 20px; height: 18px; border-radius: 2px; padding: 0 4px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; }
+</style>
+</head>
+<body>
+  <div class="label">Status Badges</div>
+  <div class="row">
+    <span class="badge" style="background:#FFFBEB;color:#B8860B;border:1px solid #F0D080">
+      <span class="dot" style="background:#FFB81C"></span> HIGH PRIORITY
+    </span>
+    <span class="badge" style="background:#FDECEB;color:#C0392B;border:1px solid #F0A99F">REJECTED</span>
+    <span class="badge" style="background:#EAF5EE;color:#1A7F4B;border:1px solid #A3D4B5">APPROVED</span>
+    <span class="badge" style="background:#F4F5F7;color:#4A5568;border:1px solid #DDE1E7">PENDING</span>
+    <span class="badge" style="background:#EEF2F8;color:#005BBB;border:1px solid #C5D6EF">IN REVIEW</span>
+    <span class="badge" style="background:#F4F5F7;color:#8A95A3;border:1px solid #DDE1E7">CLOSED</span>
+  </div>
+  <div class="label">Count Badges</div>
+  <div class="row">
+    <span class="count" style="background:#005BBB;color:white">07</span>
+    <span class="count" style="background:#C0392B;color:white">03</span>
+    <span class="count" style="background:#FFB81C;color:#0D1117">12</span>
+    <span class="count" style="background:#E8EAED;color:#4A5568">48</span>
+    <span style="font-size:12px;color:#4A5568">← notification counts</span>
+  </div>
+  <div class="label">Type Badges (Pill style)</div>
+  <div class="row">
+    <span class="badge" style="background:#EEF2F8;color:#005BBB;border-radius:999px;border:none">Submission</span>
+    <span class="badge" style="background:#EAF5EE;color:#1A7F4B;border-radius:999px;border:none">Project</span>
+    <span class="badge" style="background:#F4F5F7;color:#4A5568;border-radius:999px;border:none">Event</span>
+    <span class="badge" style="background:#FFFBEB;color:#B8860B;border-radius:999px;border:none">Report</span>
+    <span class="badge" style="background:#FDECEB;color:#C0392B;border-radius:999px;border:none">Complaint</span>
+  </div>
+</body>
+</html>
